@@ -1,2 +1,2 @@
-# mastering_agentic_ai
+# Agentic AI
 A Dedicated Repo for Agentic AI Certification Course
