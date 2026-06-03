@@ -1,11 +1,6 @@
-# Agentic AI
-A Dedicated Repo for Agentic AI Certification Course
-
----
-
 ## Week 1 — Card Optimizer
 
-A responsive web app for maximizing credit card points across Chase Sapphire Preferred and Capital One Venture X.
+A responsive web app for maximizing credit card points across Chase Sapphire Preferred and Capital One Venture X as examples.
 
 ### Features
 
@@ -55,7 +50,10 @@ PORT=8080 uv run python server.py
 
 ### Notes
 
-- The `ANTHROPIC_API_KEY` in `.env` is used only for AI merchant categorization in the Analyzer tab. All other tabs work without it.
+- The `ANTHROPIC_API_KEY` in `.env` is used for AI transaction categorization in the Analyzer tab and for pulling the latest information on transfer partner programs for credit cards.
 - Without an API key, the Analyzer falls back to keyword-based categorization — it still works for common merchants.
 - The `.env` file is gitignored — your key will never be committed.
+
+#TODO: (This feature needs to be modified)
 - On mobile: open `http://<your-local-ip>:3000` on your phone while on the same Wi-Fi network.
+ - Switch out the CSV sample data with secure Plaid integration that can pull live data from the banks

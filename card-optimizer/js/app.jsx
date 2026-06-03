@@ -42,7 +42,7 @@ function App() {
 
   const [tab, setTab] = usePersist('co_tab', 'picker');
   const [balances, setBalances] = usePersist('co_balances', {});
-  const [goal, setGoal] = usePersist('co_goal', { label: 'Tokyo, business class', target: 240000, program: 'any' });
+  const [goal, setGoal] = usePersist('co_goal', null);
   const [subs, setSubs] = usePersist('co_subs', [
     { cardId: 'venx', spent: 2100, required: 4000, daysLeft: 41, reward: 75000 },
     { cardId: 'csp', done: true, reward: 60000 },
@@ -67,7 +67,7 @@ function App() {
 
   function resetData() {
     setBalances({});
-    setGoal({ label: 'Tokyo, business class', target: 240000, program: 'any' });
+    setGoal(null);
     setSubs([{ cardId: 'venx', spent: 2100, required: 4000, daysLeft: 41, reward: 75000 }, { cardId: 'csp', done: true, reward: 60000 }]);
   }
 
