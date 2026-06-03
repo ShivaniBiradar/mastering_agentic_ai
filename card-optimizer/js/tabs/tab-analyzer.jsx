@@ -1,10 +1,6 @@
 // tab-analyzer.jsx — Statement Analyzer: dynamic per-card upload, real gap computation
 const { useState: useStateAn, useRef: useRefAn } = React;
 
-const SAMPLE_MAP = {
-  csp:  () => window.SAMPLE_CHASE_CSV,
-  venx: () => window.SAMPLE_CAPITALONE_CSV,
-};
 
 function UploadZone({ card, data, onZoneClick, t }) {
   return (
@@ -43,7 +39,7 @@ function UploadZone({ card, data, onZoneClick, t }) {
   );
 }
 
-function AnalyzerTab({ t, balances, setBalances }) {
+function AnalyzerTab({ t, setBalances }) {
   const { Icon, Chip, Meter, Btn, Panel, SectionHead, money, fmt, CAT_LABEL, CATEGORIES } = window;
   const cards = window.WALLET_CARDS;
 
@@ -131,7 +127,6 @@ function AnalyzerTab({ t, balances, setBalances }) {
 
   const uploadedCount = Object.keys(fileData).length;
   const totalTxns = Object.values(fileData).reduce((s, d) => s + d.txns.length, 0);
-  const hasSample = cards.some(c => SAMPLE_MAP[c.id]);
 
   /* ---- IDLE / UPLOAD ---- */
   if (phase === 'idle' || phase === 'error') {
@@ -171,28 +166,7 @@ function AnalyzerTab({ t, balances, setBalances }) {
           </div>
         )}
 
-        {hasSample && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 2px 12px' }}>
-              <div style={{ flex: 1, height: 1, background: t.line }} />
-              <span style={{ fontSize: 11, color: t.faint, fontWeight: 600 }}>or try sample data</span>
-              <div style={{ flex: 1, height: 1, background: t.line }} />
-            </div>
-            <Btn t={t} kind="ghost" full icon="sparkle" onClick={() => {
-              const sampleData = {};
-              cards.forEach(card => {
-                const getSample = SAMPLE_MAP[card.id];
-                if (getSample) sampleData[card.id] = loadFile(getSample(), `sample-${card.id}.csv`);
-              });
-              setFileData(sampleData);
-              run(sampleData);
-            }}>
-              Try with sample data
-            </Btn>
-          </>
-        )}
-
-        <div style={{ marginTop: 16, fontSize: 11.5, color: t.faint, lineHeight: 1.5, display: 'flex', gap: 7 }}>
+<div style={{ marginTop: 16, fontSize: 11.5, color: t.faint, lineHeight: 1.5, display: 'flex', gap: 7 }}>
           <Icon name="info" size={15} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>Files are read in your browser. Merchant names are sent to AI for categorization. Nothing is stored.</span>
         </div>

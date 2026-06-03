@@ -13,9 +13,9 @@ function WalletTab({ t, balances, setBalances, goal, setGoal }) {
   const totalVal = cards.reduce((s, c) => s + valueOf(c), 0);
   const totalPts = cards.reduce((s, c) => s + (balances[c.id] || 0), 0);
 
-  const goalProgram = goal.program;
+  const goalProgram = goal?.program;
   const goalPts = goalProgram === 'any' ? totalPts : (balances[goalProgram] || 0);
-  const goalPct = Math.min(100, goalPts / goal.target * 100);
+  const goalPct = goal ? Math.min(100, goalPts / goal.target * 100) : 0;
 
   const partners = window.TRANSFER_PARTNERS[prog] || [];
   const progBal = balances[prog] || 0;
@@ -79,25 +79,42 @@ function WalletTab({ t, balances, setBalances, goal, setGoal }) {
       </div>
 
       {/* redemption goal */}
-      <SectionHead t={t} title="Redemption goal" action="Edit" onAction={() => setEditGoal(true)} />
+      <SectionHead t={t} title="Redemption goal" action={goal ? 'Edit' : 'Set goal'} onAction={() => setEditGoal(true)} />
       <div style={{ background: `linear-gradient(160deg, ${t.accentSoft}, ${t.panel} 80%)`, border: `1px solid ${t.accentDim}`,
         borderRadius: 20, padding: 18, marginBottom: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
-        <window.Ring pct={goalPct} size={74} sw={8} t={t}>
-          <span style={{ fontFamily: 'var(--num)', fontSize: 16, fontWeight: 700, color: t.accent }}>{Math.round(goalPct)}%</span>
-        </window.Ring>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-            <Icon name="target" size={15} color={t.accent} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span style={{ fontSize: 14.5, fontWeight: 700, color: t.ink, lineHeight: 1.25 }}>{goal.label}</span>
+        {!goal ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: t.sunk, color: t.faint,
+              display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name="target" size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: t.ink }}>No goal set yet</div>
+              <div style={{ fontSize: 12, color: t.faint, marginTop: 3, lineHeight: 1.4 }}>
+                Tap <b style={{ color: t.sub }}>Set goal</b> to choose what you're saving for — a flight, hotel, or anything else.
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: 12.5, color: t.sub, marginTop: 4, lineHeight: 1.4 }}>
-            <b style={{ color: t.ink }}>{fmt(goalPts)}</b> of {fmt(goal.target)} pts
-            {goalPct < 100
-              ? <> · {fmt(goal.target - goalPts)} to go</>
-              : <> · <b style={{ color: t.good }}>Goal reached! ✦</b></>}
-          </div>
-          <div style={{ marginTop: 9 }}><Meter t={t} pct={goalPct} h={7} /></div>
-        </div>
+        ) : (
+          <>
+            <window.Ring pct={goalPct} size={74} sw={8} t={t}>
+              <span style={{ fontFamily: 'var(--num)', fontSize: 16, fontWeight: 700, color: t.accent }}>{Math.round(goalPct)}%</span>
+            </window.Ring>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <Icon name="target" size={15} color={t.accent} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span style={{ fontSize: 14.5, fontWeight: 700, color: t.ink, lineHeight: 1.25 }}>{goal.label}</span>
+              </div>
+              <div style={{ fontSize: 12.5, color: t.sub, marginTop: 4, lineHeight: 1.4 }}>
+                <b style={{ color: t.ink }}>{fmt(goalPts)}</b> of {fmt(goal.target)} pts
+                {goalPct < 100
+                  ? <> · {fmt(goal.target - goalPts)} to go</>
+                  : <> · <b style={{ color: t.good }}>Goal reached! ✦</b></>}
+              </div>
+              <div style={{ marginTop: 9 }}><Meter t={t} pct={goalPct} h={7} /></div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* transfer optimizer */}
@@ -164,10 +181,12 @@ function WalletTab({ t, balances, setBalances, goal, setGoal }) {
   );
 }
 
+const EMPTY_GOAL = { label: '', target: 0, program: 'any' };
+
 function GoalSheet({ open, onClose, t, goal, setGoal, cards }) {
   const { Sheet, Btn, Segmented } = window;
-  const [d, setD] = useStateW(goal);
-  React.useEffect(() => { if (open) setD(goal); }, [open]);
+  const [d, setD] = useStateW(goal || EMPTY_GOAL);
+  React.useEffect(() => { if (open) setD(goal || EMPTY_GOAL); }, [open]);
   const inputStyle = { width: '100%', marginTop: 6, padding: '12px 14px', borderRadius: 13, fontSize: 15,
     fontWeight: 600, color: t.ink, background: t.panel2, border: `1px solid ${t.line}`, outline: 'none',
     boxSizing: 'border-box', fontFamily: 'inherit' };
