@@ -1,0 +1,37 @@
+# Environment
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Large data files — already indexed in Pinecone, not needed at runtime
+data/cleaned/recipes.jsonl
+data/cleaned/allergen_embeddings_cache.json
+data/cleaned/indexer_checkpoint.json
+data/raw/
+
+# BM25 encoder IS needed at runtime — included in repo (1 MB, safe for GitHub)
+# data/cleaned/bm25_encoder.json  ← do NOT ignore this
+
+# SQLite profiles DB — ephemeral on Streamlit Cloud, regenerated at runtime
+data/profiles.db
+
+# Eval results — run-specific, not committed
+data/eval/results/
+
+# Logs
+logs/
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

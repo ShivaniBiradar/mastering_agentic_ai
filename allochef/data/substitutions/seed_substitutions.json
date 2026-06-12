@@ -1,0 +1,566 @@
+{
+  "substitutions": [
+
+    {
+      "original": "butter",
+      "substitute": "coconut oil",
+      "allergen": "milk",
+      "works_in": ["baking", "sauteing", "roasting"],
+      "notes": "1:1 ratio. Adds slight coconut flavor. Best for savory dishes or strongly-flavored bakes."
+    },
+    {
+      "original": "butter",
+      "substitute": "vegan butter",
+      "allergen": "milk",
+      "works_in": ["baking", "sauteing", "spreading"],
+      "notes": "1:1 ratio. Closest flavor match. Check label for soy if soy allergy also present."
+    },
+    {
+      "original": "butter",
+      "substitute": "olive oil",
+      "allergen": "milk",
+      "works_in": ["sauteing", "roasting"],
+      "notes": "3/4 cup oil per 1 cup butter. Not suitable for baking."
+    },
+    {
+      "original": "milk",
+      "substitute": "oat milk",
+      "allergen": "milk",
+      "works_in": ["baking", "sauces", "soups", "pancakes"],
+      "notes": "1:1 ratio. Neutral flavor, best all-purpose dairy-free milk substitute."
+    },
+    {
+      "original": "milk",
+      "substitute": "almond milk",
+      "allergen": "milk",
+      "works_in": ["baking", "smoothies", "cereal", "pancakes"],
+      "notes": "1:1 ratio. Slightly nutty. Not suitable if tree nut allergy present."
+    },
+    {
+      "original": "milk",
+      "substitute": "soy milk",
+      "allergen": "milk",
+      "works_in": ["baking", "sauces", "soups"],
+      "notes": "1:1 ratio. Closest protein content to dairy milk. Avoid if soy allergy present."
+    },
+    {
+      "original": "milk",
+      "substitute": "coconut milk",
+      "allergen": "milk",
+      "works_in": ["curries", "soups", "baking", "desserts"],
+      "notes": "1:1 ratio. Adds richness and coconut flavor. Great for creamy sauces."
+    },
+    {
+      "original": "heavy cream",
+      "substitute": "coconut cream",
+      "allergen": "milk",
+      "works_in": ["sauces", "desserts", "soups", "whipping"],
+      "notes": "1:1 ratio. Rich and creamy. Can be whipped when chilled."
+    },
+    {
+      "original": "heavy cream",
+      "substitute": "cashew cream",
+      "allergen": "milk",
+      "works_in": ["sauces", "soups", "pasta"],
+      "notes": "Blend soaked cashews with water. Avoid if tree nut allergy present."
+    },
+    {
+      "original": "cream cheese",
+      "substitute": "cashew cream cheese",
+      "allergen": "milk",
+      "works_in": ["spreads", "dips", "frosting", "cheesecake"],
+      "notes": "Blend soaked cashews with lemon juice and salt. Avoid if tree nut allergy present."
+    },
+    {
+      "original": "cream cheese",
+      "substitute": "tofu cream cheese",
+      "allergen": "milk",
+      "works_in": ["spreads", "dips", "frosting"],
+      "notes": "Blend silken tofu with lemon juice. Avoid if soy allergy present."
+    },
+    {
+      "original": "cheese",
+      "substitute": "nutritional yeast",
+      "allergen": "milk",
+      "works_in": ["sauces", "pasta", "topping"],
+      "notes": "Adds cheesy, umami flavor. Use 2-3 tablespoons to replace 1/4 cup cheese."
+    },
+    {
+      "original": "parmesan",
+      "substitute": "nutritional yeast",
+      "allergen": "milk",
+      "works_in": ["pasta", "salads", "topping"],
+      "notes": "Equal parts. Nutty, savory flavor similar to aged cheese."
+    },
+    {
+      "original": "yogurt",
+      "substitute": "coconut yogurt",
+      "allergen": "milk",
+      "works_in": ["baking", "marinades", "dips", "breakfast"],
+      "notes": "1:1 ratio. Tangy and creamy. Widely available in stores."
+    },
+    {
+      "original": "yogurt",
+      "substitute": "soy yogurt",
+      "allergen": "milk",
+      "works_in": ["baking", "marinades", "dips"],
+      "notes": "1:1 ratio. Avoid if soy allergy present."
+    },
+    {
+      "original": "sour cream",
+      "substitute": "coconut cream",
+      "allergen": "milk",
+      "works_in": ["dips", "toppings", "baking"],
+      "notes": "Add a squeeze of lemon juice for tang. 1:1 ratio."
+    },
+    {
+      "original": "buttermilk",
+      "substitute": "oat milk with vinegar",
+      "allergen": "milk",
+      "works_in": ["baking", "pancakes", "marinades"],
+      "notes": "1 cup oat milk + 1 tbsp white vinegar, let sit 5 minutes. 1:1 ratio."
+    },
+
+    {
+      "original": "egg",
+      "substitute": "flax egg",
+      "allergen": "eggs",
+      "works_in": ["baking", "pancakes", "muffins"],
+      "notes": "1 tbsp ground flaxseed + 3 tbsp water, rest 5 min. Best as binder, not for lift."
+    },
+    {
+      "original": "egg",
+      "substitute": "chia egg",
+      "allergen": "eggs",
+      "works_in": ["baking", "pancakes", "muffins"],
+      "notes": "1 tbsp chia seeds + 3 tbsp water, rest 5 min. Similar to flax egg."
+    },
+    {
+      "original": "egg",
+      "substitute": "applesauce",
+      "allergen": "eggs",
+      "works_in": ["baking", "muffins", "quick breads"],
+      "notes": "1/4 cup per egg. Adds moisture and slight sweetness. Good for dense bakes."
+    },
+    {
+      "original": "egg",
+      "substitute": "mashed banana",
+      "allergen": "eggs",
+      "works_in": ["baking", "pancakes", "muffins"],
+      "notes": "1/4 cup (half a banana) per egg. Adds banana flavor."
+    },
+    {
+      "original": "egg",
+      "substitute": "aquafaba",
+      "allergen": "eggs",
+      "works_in": ["meringue", "baking", "whipping"],
+      "notes": "3 tbsp per egg. Liquid from canned chickpeas. Best for whipped applications."
+    },
+    {
+      "original": "egg",
+      "substitute": "silken tofu",
+      "allergen": "eggs",
+      "works_in": ["baking", "quiche", "scrambles"],
+      "notes": "1/4 cup blended per egg. Avoid if soy allergy present."
+    },
+    {
+      "original": "egg whites",
+      "substitute": "aquafaba",
+      "allergen": "eggs",
+      "works_in": ["meringue", "macarons", "whipping"],
+      "notes": "3 tbsp per egg white. Can be whipped to stiff peaks."
+    },
+
+    {
+      "original": "peanut butter",
+      "substitute": "sunflower seed butter",
+      "allergen": "peanuts",
+      "works_in": ["spreads", "sauces", "baking", "smoothies"],
+      "notes": "1:1 ratio. Nut-free. Slightly earthier flavor. Safe for most nut allergies."
+    },
+    {
+      "original": "peanut butter",
+      "substitute": "almond butter",
+      "allergen": "peanuts",
+      "works_in": ["spreads", "baking", "sauces"],
+      "notes": "1:1 ratio. Not suitable if tree nut allergy also present."
+    },
+    {
+      "original": "peanut butter",
+      "substitute": "tahini",
+      "allergen": "peanuts",
+      "works_in": ["sauces", "dressings", "dips"],
+      "notes": "1:1 ratio. More savory, less sweet. Great in Asian-inspired sauces."
+    },
+    {
+      "original": "peanut butter",
+      "substitute": "pumpkin seed butter",
+      "allergen": "peanuts",
+      "works_in": ["spreads", "baking", "smoothies"],
+      "notes": "1:1 ratio. Nut-free and seed-free alternative to sunflower butter."
+    },
+    {
+      "original": "peanuts",
+      "substitute": "sunflower seeds",
+      "allergen": "peanuts",
+      "works_in": ["salads", "stir fry", "snacking", "toppings"],
+      "notes": "Equal amount. Crunchy texture, mild flavor."
+    },
+    {
+      "original": "peanuts",
+      "substitute": "pumpkin seeds",
+      "allergen": "peanuts",
+      "works_in": ["salads", "baking", "toppings"],
+      "notes": "Equal amount. Nutty flavor, nut-free."
+    },
+    {
+      "original": "peanut oil",
+      "substitute": "sunflower oil",
+      "allergen": "peanuts",
+      "works_in": ["frying", "sauteing", "roasting"],
+      "notes": "1:1 ratio. High smoke point, neutral flavor."
+    },
+
+    {
+      "original": "almonds",
+      "substitute": "sunflower seeds",
+      "allergen": "tree_nuts",
+      "works_in": ["baking", "salads", "snacking", "toppings"],
+      "notes": "Equal amount. Similar crunch. Nut-free."
+    },
+    {
+      "original": "almonds",
+      "substitute": "pumpkin seeds",
+      "allergen": "tree_nuts",
+      "works_in": ["baking", "salads", "granola"],
+      "notes": "Equal amount. Slightly chewier, mild nutty flavor."
+    },
+    {
+      "original": "almond flour",
+      "substitute": "oat flour",
+      "allergen": "tree_nuts",
+      "works_in": ["baking", "pancakes"],
+      "notes": "1:1 ratio by weight. Denser result. Avoid if gluten/wheat allergy present."
+    },
+    {
+      "original": "almond flour",
+      "substitute": "sunflower seed flour",
+      "allergen": "tree_nuts",
+      "works_in": ["baking"],
+      "notes": "1:1 ratio. Nut-free and gluten-free. Can turn baked goods green due to reaction with baking soda."
+    },
+    {
+      "original": "almond milk",
+      "substitute": "oat milk",
+      "allergen": "tree_nuts",
+      "works_in": ["baking", "cereal", "smoothies", "coffee"],
+      "notes": "1:1 ratio. Neutral flavor, nut-free."
+    },
+    {
+      "original": "cashews",
+      "substitute": "sunflower seeds",
+      "allergen": "tree_nuts",
+      "works_in": ["snacking", "stir fry", "salads"],
+      "notes": "Equal amount. Less creamy but similar crunch."
+    },
+    {
+      "original": "walnuts",
+      "substitute": "sunflower seeds",
+      "allergen": "tree_nuts",
+      "works_in": ["baking", "salads", "oatmeal"],
+      "notes": "Equal amount. Less bitter, lighter flavor."
+    },
+    {
+      "original": "pecans",
+      "substitute": "pumpkin seeds",
+      "allergen": "tree_nuts",
+      "works_in": ["baking", "salads", "pies"],
+      "notes": "Equal amount. Slightly less sweet but similar texture when toasted."
+    },
+    {
+      "original": "pine nuts",
+      "substitute": "sunflower seeds",
+      "allergen": "tree_nuts",
+      "works_in": ["pesto", "salads", "pasta", "topping"],
+      "notes": "Equal amount. Works well in pesto as a nut-free alternative."
+    },
+    {
+      "original": "hazelnuts",
+      "substitute": "pumpkin seeds",
+      "allergen": "tree_nuts",
+      "works_in": ["baking", "chocolate dishes", "toppings"],
+      "notes": "Equal amount. Less aromatic but nut-free."
+    },
+
+    {
+      "original": "all-purpose flour",
+      "substitute": "gluten-free all-purpose flour blend",
+      "allergen": "wheat",
+      "works_in": ["baking", "thickening", "coating"],
+      "notes": "1:1 ratio. Most blends contain xanthan gum for structure. Best all-purpose swap."
+    },
+    {
+      "original": "all-purpose flour",
+      "substitute": "rice flour",
+      "allergen": "wheat",
+      "works_in": ["thickening", "coating", "baking"],
+      "notes": "1:1 ratio for thickening. For baking, blend with other GF flours for best results."
+    },
+    {
+      "original": "all-purpose flour",
+      "substitute": "oat flour",
+      "allergen": "wheat",
+      "works_in": ["baking", "pancakes", "muffins"],
+      "notes": "1:1 ratio. Only use certified gluten-free oat flour if celiac/gluten allergy."
+    },
+    {
+      "original": "bread flour",
+      "substitute": "gluten-free bread flour blend",
+      "allergen": "wheat",
+      "works_in": ["bread", "pizza dough"],
+      "notes": "1:1 ratio. Add 1 tsp xanthan gum if blend does not include it."
+    },
+    {
+      "original": "pasta",
+      "substitute": "rice pasta",
+      "allergen": "wheat",
+      "works_in": ["pasta dishes"],
+      "notes": "1:1 ratio by weight. Cook slightly less time — can go mushy. Widely available."
+    },
+    {
+      "original": "pasta",
+      "substitute": "chickpea pasta",
+      "allergen": "wheat",
+      "works_in": ["pasta dishes"],
+      "notes": "1:1 ratio. Higher protein, slightly earthier flavor. Holds shape well."
+    },
+    {
+      "original": "pasta",
+      "substitute": "zucchini noodles",
+      "allergen": "wheat",
+      "works_in": ["pasta dishes"],
+      "notes": "Spiralize fresh zucchini. Low-carb, no cooking needed (eat raw or lightly saute)."
+    },
+    {
+      "original": "breadcrumbs",
+      "substitute": "gluten-free breadcrumbs",
+      "allergen": "wheat",
+      "works_in": ["coating", "topping", "binding"],
+      "notes": "1:1 ratio. Available in most supermarkets."
+    },
+    {
+      "original": "breadcrumbs",
+      "substitute": "crushed rice crackers",
+      "allergen": "wheat",
+      "works_in": ["coating", "topping"],
+      "notes": "Equal amount. Crunchy coating. Works well for frying and baking."
+    },
+    {
+      "original": "soy sauce",
+      "substitute": "tamari",
+      "allergen": "wheat",
+      "works_in": ["marinades", "stir fry", "dipping", "sauces"],
+      "notes": "1:1 ratio. Tamari is traditionally wheat-free — check label to confirm."
+    },
+    {
+      "original": "soy sauce",
+      "substitute": "coconut aminos",
+      "allergen": "wheat",
+      "works_in": ["marinades", "stir fry", "dipping"],
+      "notes": "1:1 ratio. Slightly sweeter, wheat-free and soy-free."
+    },
+
+    {
+      "original": "soy sauce",
+      "substitute": "coconut aminos",
+      "allergen": "soy",
+      "works_in": ["marinades", "stir fry", "dipping", "sauces"],
+      "notes": "1:1 ratio. Slightly sweeter and less salty. Soy-free and wheat-free."
+    },
+    {
+      "original": "tofu",
+      "substitute": "chickpeas",
+      "allergen": "soy",
+      "works_in": ["stir fry", "curries", "salads"],
+      "notes": "Equal amount. Different texture but similar protein content."
+    },
+    {
+      "original": "tofu",
+      "substitute": "paneer",
+      "allergen": "soy",
+      "works_in": ["curries", "stir fry", "grilling"],
+      "notes": "Equal amount. Dairy-based — avoid if milk allergy also present."
+    },
+    {
+      "original": "tofu",
+      "substitute": "tempeh",
+      "allergen": "soy",
+      "works_in": ["stir fry", "grilling", "crumbles"],
+      "notes": "Note: tempeh is also soy-based. Only substitute if the issue is texture, not soy allergy."
+    },
+    {
+      "original": "edamame",
+      "substitute": "green peas",
+      "allergen": "soy",
+      "works_in": ["salads", "stir fry", "rice dishes"],
+      "notes": "Equal amount. Similar color and texture. Mild, sweet flavor."
+    },
+    {
+      "original": "miso",
+      "substitute": "chickpea miso",
+      "allergen": "soy",
+      "works_in": ["soups", "sauces", "marinades"],
+      "notes": "1:1 ratio. Soy-free miso made from chickpeas. Available in specialty stores."
+    },
+    {
+      "original": "tempeh",
+      "substitute": "chickpea tempeh",
+      "allergen": "soy",
+      "works_in": ["stir fry", "grilling", "crumbles"],
+      "notes": "1:1 ratio. Soy-free alternative. Less common but available in health food stores."
+    },
+    {
+      "original": "soy milk",
+      "substitute": "oat milk",
+      "allergen": "soy",
+      "works_in": ["baking", "cereal", "coffee", "smoothies"],
+      "notes": "1:1 ratio. Neutral flavor, widely available."
+    },
+
+    {
+      "original": "fish",
+      "substitute": "jackfruit",
+      "allergen": "fish",
+      "works_in": ["tacos", "curries", "stews"],
+      "notes": "Equal amount. Shreds like fish when cooked. Neutral flavor takes on seasoning well."
+    },
+    {
+      "original": "fish sauce",
+      "substitute": "coconut aminos",
+      "allergen": "fish",
+      "works_in": ["marinades", "stir fry", "soups"],
+      "notes": "1:1 ratio. Adds umami without fish. Slightly sweeter."
+    },
+    {
+      "original": "fish sauce",
+      "substitute": "soy sauce with nori",
+      "allergen": "fish",
+      "works_in": ["marinades", "stir fry", "soups"],
+      "notes": "1 tsp soy sauce + small piece of nori simmered. Mimics briny, umami flavor."
+    },
+    {
+      "original": "anchovy",
+      "substitute": "capers",
+      "allergen": "fish",
+      "works_in": ["pasta", "sauces", "dressings"],
+      "notes": "Equal amount. Salty and briny. Similar flavor punch without fish."
+    },
+    {
+      "original": "anchovy",
+      "substitute": "miso paste",
+      "allergen": "fish",
+      "works_in": ["sauces", "dressings", "pasta"],
+      "notes": "Equal amount. Adds salty umami depth. Avoid if soy allergy present."
+    },
+    {
+      "original": "salmon",
+      "substitute": "roasted carrots",
+      "allergen": "fish",
+      "works_in": ["sushi rolls", "bowls"],
+      "notes": "Marinate with soy, sesame, and nori for a salmon-like flavor profile."
+    },
+
+    {
+      "original": "shrimp",
+      "substitute": "king oyster mushrooms",
+      "allergen": "shellfish",
+      "works_in": ["stir fry", "pasta", "tacos", "curries"],
+      "notes": "Cut into rounds or pull apart. Meaty texture. Absorbs flavors well."
+    },
+    {
+      "original": "shrimp",
+      "substitute": "chickpeas",
+      "allergen": "shellfish",
+      "works_in": ["stir fry", "curries", "pasta"],
+      "notes": "Equal amount. Different texture but picks up seasoning well."
+    },
+    {
+      "original": "crab",
+      "substitute": "hearts of palm",
+      "allergen": "shellfish",
+      "works_in": ["crab cakes", "salads", "dips"],
+      "notes": "Shred hearts of palm for similar flaky texture. Mild flavor."
+    },
+    {
+      "original": "crab",
+      "substitute": "jackfruit",
+      "allergen": "shellfish",
+      "works_in": ["crab cakes", "dips", "pasta"],
+      "notes": "Young green jackfruit shreds like crab meat. Neutral flavor, absorbs seasoning well."
+    },
+    {
+      "original": "lobster",
+      "substitute": "king oyster mushrooms",
+      "allergen": "shellfish",
+      "works_in": ["bisques", "pasta", "rolls"],
+      "notes": "Slice stem into rounds, sear until golden. Meaty, slightly sweet."
+    },
+    {
+      "original": "oyster",
+      "substitute": "king oyster mushrooms",
+      "allergen": "shellfish",
+      "works_in": ["stews", "grilling", "soups"],
+      "notes": "Similar texture and mild briny flavor when cooked with seaweed."
+    },
+    {
+      "original": "scallops",
+      "substitute": "king oyster mushrooms",
+      "allergen": "shellfish",
+      "works_in": ["searing", "pasta", "risotto"],
+      "notes": "Slice stem into thick rounds and sear in butter/oil. Nearly identical appearance."
+    },
+
+    {
+      "original": "tahini",
+      "substitute": "sunflower seed butter",
+      "allergen": "sesame",
+      "works_in": ["hummus", "dressings", "sauces", "dips"],
+      "notes": "1:1 ratio. Closest flavor match. Slightly milder than tahini."
+    },
+    {
+      "original": "tahini",
+      "substitute": "pumpkin seed butter",
+      "allergen": "sesame",
+      "works_in": ["dressings", "dips", "sauces"],
+      "notes": "1:1 ratio. Earthier flavor, sesame-free."
+    },
+    {
+      "original": "sesame oil",
+      "substitute": "perilla oil",
+      "allergen": "sesame",
+      "works_in": ["dressings", "marinades", "finishing"],
+      "notes": "1:1 ratio. Similar nutty aroma. Less common but available in Asian grocery stores."
+    },
+    {
+      "original": "sesame oil",
+      "substitute": "walnut oil",
+      "allergen": "sesame",
+      "works_in": ["dressings", "finishing"],
+      "notes": "1:1 ratio. Nutty flavor. Avoid if tree nut allergy present."
+    },
+    {
+      "original": "sesame seeds",
+      "substitute": "hemp seeds",
+      "allergen": "sesame",
+      "works_in": ["toppings", "coatings", "salads", "baking"],
+      "notes": "Equal amount. Similar size and crunch. Nutty, mild flavor."
+    },
+    {
+      "original": "sesame seeds",
+      "substitute": "poppy seeds",
+      "allergen": "sesame",
+      "works_in": ["toppings", "baking", "coatings"],
+      "notes": "Equal amount. Slightly different flavor but similar visual effect."
+    }
+  ]
+}

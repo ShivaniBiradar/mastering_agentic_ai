@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Card Optimizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --num: 'Schibsted Grotesk', system-ui, sans-serif; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; font-family: 'Schibsted Grotesk', system-ui, sans-serif; }
+  #root { min-height: 100dvh; }
+
+  .stage { min-height: 100dvh; display: flex; align-items: center; justify-content: center; }
+  .app {
+    position: relative;
+    width: 100%; max-width: 480px; height: 100dvh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .content::-webkit-scrollbar { width: 0; }
+  .content { scrollbar-width: none; }
+
+  /* Tablet: phone frame */
+  @media (min-width: 540px) and (max-width: 767px) {
+    .stage { padding: 26px; }
+    .app {
+      height: min(908px, calc(100dvh - 52px));
+      border-radius: 32px;
+      box-shadow: 0 36px 90px -34px rgba(20,30,20,0.45);
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+  }
+
+  /* Desktop: full-screen, no phone frame */
+  @media (min-width: 768px) {
+    html, body, #root { height: 100%; width: 100%; }
+    .stage {
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      align-items: stretch;
+      justify-content: flex-start;
+    }
+    .app {
+      width: 100%;
+      max-width: none;
+      height: 100dvh;
+      border-radius: 0;
+      box-shadow: none;
+      border: none;
+    }
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin .8s linear infinite; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  button { font-family: inherit; }
+  input { font-family: inherit; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="js/tweaks-panel.jsx"></script>
+<script type="text/babel" src="js/data.js"></script>
+<script type="text/babel" src="js/ui.jsx"></script>
+<script type="text/babel" src="js/analyzer-logic.js"></script>
+<script type="text/babel" src="js/tabs/tab-picker.jsx"></script>
+<script type="text/babel" src="js/tabs/tab-analyzer.jsx"></script>
+<script type="text/babel" src="js/tabs/tab-wallet.jsx"></script>
+<script type="text/babel" src="js/tabs/tab-insights.jsx"></script>
+<script type="text/babel" src="js/app.jsx"></script>
+</body>
+</html>
