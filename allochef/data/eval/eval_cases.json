@@ -1,0 +1,175 @@
+[
+  {
+    "id": "tc_safe_001",
+    "description": "Basic safe — chicken garlic tomato, no restrictions",
+    "ingredients": ["chicken", "garlic", "tomato"],
+    "family_profiles": {},
+    "active_members": [],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_safe_recipes": 3,
+      "max_unsafe_recipes": 0,
+      "faithfulness": true,
+      "no_fallback": true
+    }
+  },
+  {
+    "id": "tc_safe_002",
+    "description": "Vegetarian — paneer potato chilli, no restrictions",
+    "ingredients": ["paneer", "potato", "chilli"],
+    "family_profiles": {},
+    "active_members": [],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_safe_recipes": 2,
+      "max_unsafe_recipes": 0,
+      "faithfulness": true,
+      "no_fallback": true
+    }
+  },
+  {
+    "id": "tc_safe_003",
+    "description": "Mixed veg — onion, lemon, olive oil, garlic; no restrictions",
+    "ingredients": ["onion", "lemon", "olive oil", "garlic"],
+    "family_profiles": {},
+    "active_members": [],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_safe_recipes": 2,
+      "faithfulness": true,
+      "no_fallback": true
+    }
+  },
+  {
+    "id": "tc_allergen_shellfish",
+    "description": "Shellfish restriction — crab must be flagged unsafe and swapped",
+    "ingredients": ["cheese", "mayonnaise", "potato", "garlic", "crab", "tomato"],
+    "family_profiles": {"TestUser": ["shellfish"]},
+    "active_members": ["TestUser"],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_unsafe_recipes": 1,
+      "faithfulness": true,
+      "no_fallback": true,
+      "substitutions": [
+        {
+          "original": "crab",
+          "expected_options": ["hearts of palm", "jackfruit"]
+        }
+      ],
+      "allergen_absent_from_steps": "crab"
+    }
+  },
+  {
+    "id": "tc_allergen_dairy",
+    "description": "Dairy restriction — butter and cream recipes must be flagged",
+    "ingredients": ["pasta", "cream", "butter", "garlic", "parmesan"],
+    "family_profiles": {"TestUser": ["milk"]},
+    "active_members": ["TestUser"],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_unsafe_recipes": 1,
+      "faithfulness": true,
+      "substitutions": [
+        {
+          "original": "butter",
+          "expected_options": ["olive oil", "coconut oil", "vegan butter"]
+        }
+      ],
+      "allergen_absent_from_steps": "butter"
+    }
+  },
+  {
+    "id": "tc_allergen_eggs",
+    "description": "Egg restriction — egg-based baked goods must be flagged and swapped",
+    "ingredients": ["eggs", "flour", "sugar", "butter", "vanilla"],
+    "family_profiles": {"TestUser": ["eggs"]},
+    "active_members": ["TestUser"],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_unsafe_recipes": 1,
+      "faithfulness": true,
+      "substitutions": [
+        {
+          "original": "eggs",
+          "expected_options": ["flax egg", "chia egg", "applesauce", "aquafaba"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "tc_allergen_peanuts",
+    "description": "Peanut restriction — peanut butter recipes must be flagged",
+    "ingredients": ["peanut butter", "banana", "oats", "honey"],
+    "family_profiles": {"TestUser": ["peanuts"]},
+    "active_members": ["TestUser"],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_unsafe_recipes": 1,
+      "faithfulness": true,
+      "substitutions": [
+        {
+          "original": "peanut butter",
+          "expected_options": ["sunflower seed butter", "almond butter", "soy nut butter"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "tc_allergen_wheat",
+    "description": "Wheat restriction — bread/flour recipes must be flagged",
+    "ingredients": ["flour", "yeast", "water", "salt", "olive oil"],
+    "family_profiles": {"TestUser": ["wheat"]},
+    "active_members": ["TestUser"],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_unsafe_recipes": 1,
+      "faithfulness": true,
+      "substitutions": [
+        {
+          "original": "flour",
+          "expected_options": ["almond flour", "rice flour", "oat flour", "gluten-free flour"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "tc_multi_allergen",
+    "description": "Multiple allergens — shellfish + soy; both must be caught independently",
+    "ingredients": ["crab", "soy sauce", "garlic", "ginger", "noodles"],
+    "family_profiles": {"TestUser": ["shellfish", "soy"]},
+    "active_members": ["TestUser"],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_unsafe_recipes": 1,
+      "faithfulness": true,
+      "allergen_absent_from_steps": "crab"
+    }
+  },
+  {
+    "id": "tc_multi_member",
+    "description": "Two family members with different allergens — union of restrictions applied",
+    "ingredients": ["salmon", "cream", "butter", "dill", "lemon"],
+    "family_profiles": {
+      "Alice": ["fish"],
+      "Bob": ["milk"]
+    },
+    "active_members": ["Alice", "Bob"],
+    "checks": {
+      "retrieval_relevant": true,
+      "min_unsafe_recipes": 1,
+      "expected_restrictions": ["fish", "milk"],
+      "faithfulness": true
+    }
+  },
+  {
+    "id": "tc_irrelevant",
+    "description": "Non-food inputs — retrieval must be judged not_relevant (pipeline proceeds but shouldn't hallucinate)",
+    "ingredients": ["graphite", "circuit board", "plastic"],
+    "family_profiles": {},
+    "active_members": [],
+    "checks": {
+      "retrieval_relevant": false
+    }
+  }
+]

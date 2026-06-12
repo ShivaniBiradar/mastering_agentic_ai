@@ -1,0 +1,298 @@
+{
+  "timestamp": "2026-06-12T03:23:30.612878+00:00",
+  "cases_file": "/Users/shivani/projects/mastering_agentic_ai/allochef/data/eval/eval_cases.json",
+  "scores": {
+    "faithfulness": {
+      "passed": 10,
+      "total": 10,
+      "pct": 100.0
+    },
+    "retrieval_recall": {
+      "passed": 11,
+      "total": 11,
+      "pct": 100.0
+    },
+    "allergen_recall": {
+      "passed": 7,
+      "total": 7,
+      "pct": 100.0
+    },
+    "sub_accuracy": {
+      "passed": 3,
+      "total": 5,
+      "pct": 60.0
+    },
+    "sub_applied": {
+      "passed": 0,
+      "total": 3,
+      "pct": 0.0
+    },
+    "fallback_rate": {
+      "triggered": 0,
+      "total": 11,
+      "pct": 0.0
+    }
+  },
+  "results": [
+    {
+      "id": "tc_safe_001",
+      "description": "Basic safe \u2014 chicken garlic tomato, no restrictions",
+      "status": "PASS",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "no_fallback: no fallback",
+        "min_safe_recipes: safe_recipes=16 (>= 3)",
+        "max_unsafe_recipes: unsafe=0 (<= 0)"
+      ],
+      "failed": [],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 16,
+        "unsafe_count": 0,
+        "substitution_count": 0,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_safe_002",
+      "description": "Vegetarian \u2014 paneer potato chilli, no restrictions",
+      "status": "PASS",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "no_fallback: no fallback",
+        "min_safe_recipes: safe_recipes=19 (>= 2)",
+        "max_unsafe_recipes: unsafe=0 (<= 0)"
+      ],
+      "failed": [],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 19,
+        "unsafe_count": 0,
+        "substitution_count": 0,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_safe_003",
+      "description": "Mixed veg \u2014 onion, lemon, olive oil, garlic; no restrictions",
+      "status": "PASS",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "no_fallback: no fallback",
+        "min_safe_recipes: safe_recipes=19 (>= 2)"
+      ],
+      "failed": [],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 19,
+        "unsafe_count": 0,
+        "substitution_count": 0,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_allergen_shellfish",
+      "description": "Shellfish restriction \u2014 crab must be flagged unsafe and swapped",
+      "status": "FAIL",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "no_fallback: no fallback",
+        "min_unsafe_recipes: unsafe_recipes=18 (>= 1)",
+        "sub_accuracy[crab]: sub: crab \u2192 jackfruit [neo4j]"
+      ],
+      "failed": [
+        "allergen_absent[crab]: 'crab' still present \u2014 found in steps: ['stir in the imitation crab, chopped tomato, and green onions.', 'stir in the lump crabmeat.']; found in ingredients: ['imitation crabmeat', 'lump crabmeat']"
+      ],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 18,
+        "unsafe_count": 18,
+        "substitution_count": 20,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_allergen_dairy",
+      "description": "Dairy restriction \u2014 butter and cream recipes must be flagged",
+      "status": "FAIL",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "min_unsafe_recipes: unsafe_recipes=19 (>= 1)",
+        "sub_accuracy[butter]: sub: butter \u2192 coconut oil [neo4j]"
+      ],
+      "failed": [
+        "allergen_absent[butter]: 'butter' still present \u2014 found in steps: ['drain pasta and add to garlic butter.']"
+      ],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 19,
+        "unsafe_count": 19,
+        "substitution_count": 20,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_allergen_eggs",
+      "description": "Egg restriction \u2014 egg-based baked goods must be flagged and swapped",
+      "status": "FAIL",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "min_unsafe_recipes: unsafe_recipes=19 (>= 1)"
+      ],
+      "failed": [
+        "sub_accuracy[eggs]: no substitute found for 'eggs' in ['flax egg', 'chia egg', 'applesauce', 'aquafaba']"
+      ],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 19,
+        "unsafe_count": 19,
+        "substitution_count": 20,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_allergen_peanuts",
+      "description": "Peanut restriction \u2014 peanut butter recipes must be flagged",
+      "status": "PASS",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "min_unsafe_recipes: unsafe_recipes=13 (>= 1)",
+        "sub_accuracy[peanut butter]: sub: peanut butter \u2192 sunflower seed butter [neo4j]"
+      ],
+      "failed": [],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 14,
+        "unsafe_count": 13,
+        "substitution_count": 19,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_allergen_wheat",
+      "description": "Wheat restriction \u2014 bread/flour recipes must be flagged",
+      "status": "FAIL",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "min_unsafe_recipes: unsafe_recipes=17 (>= 1)"
+      ],
+      "failed": [
+        "sub_accuracy[flour]: no substitute found for 'flour' in ['almond flour', 'rice flour', 'oat flour', 'gluten-free flour']"
+      ],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 17,
+        "unsafe_count": 17,
+        "substitution_count": 20,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_multi_allergen",
+      "description": "Multiple allergens \u2014 shellfish + soy; both must be caught independently",
+      "status": "FAIL",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "min_unsafe_recipes: unsafe_recipes=16 (>= 1)"
+      ],
+      "failed": [
+        "allergen_absent[crab]: 'crab' still present \u2014 found in steps: ['a minute later, add garlic and half the scallions and, almost immediately, the noodles and crab.']; found in ingredients: ['crabmeat']"
+      ],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 16,
+        "unsafe_count": 16,
+        "substitution_count": 33,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_multi_member",
+      "description": "Two family members with different allergens \u2014 union of restrictions applied",
+      "status": "PASS",
+      "passed": [
+        "retrieval_relevant: retrieval=relevant",
+        "faithfulness: hallucination=grounded",
+        "min_unsafe_recipes: unsafe_recipes=16 (>= 1)",
+        "restrictions: restrictions=['fish', 'milk']"
+      ],
+      "failed": [],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 16,
+        "unsafe_count": 16,
+        "substitution_count": 37,
+        "generation_attempts": 1,
+        "retrieval_attempts": 0
+      }
+    },
+    {
+      "id": "tc_irrelevant",
+      "description": "Non-food inputs \u2014 retrieval must be judged not_relevant (pipeline proceeds but shouldn't hallucinate)",
+      "status": "PASS",
+      "passed": [
+        "retrieval_relevant: retrieval=not_relevant"
+      ],
+      "failed": [],
+      "skipped": [],
+      "raw": {
+        "relevance_verdict": "not_relevant",
+        "hallucination_verdict": "grounded",
+        "is_fallback": false,
+        "safe_count": 17,
+        "unsafe_count": 0,
+        "substitution_count": 0,
+        "generation_attempts": 1,
+        "retrieval_attempts": 2
+      }
+    }
+  ]
+}
