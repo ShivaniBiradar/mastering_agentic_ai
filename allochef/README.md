@@ -2,7 +2,7 @@
 
 **Allergen-safe recipe suggestions for multi-diet families.**
 
-AlloChef answers the question: *"What can we safely cook tonight, given what we have and who's eating?"*
+AlloChef answers the question: *"What can we cook tonight, given what we have and who's eating?"*
 
 Enter your available ingredients, select which family members are eating, and AlloChef retrieves recipes from a 230k-recipe corpus, checks them against each person's allergen profile, finds ingredient substitutions where needed, and generates practical cooking suggestions — all grounded in real retrieved recipes, never hallucinated.
 
