@@ -220,3 +220,8 @@ __marimo__/
 # editor swap files
 *.swp
 *.swo
+
+# internal/working docs — keep local, not in repo
+allochef/AGENTS_ARCHITECTURE.md
+allochef/DEMO_WALKTHROUGH.md
+allochef/PROJECT_SUBMISSION.md
