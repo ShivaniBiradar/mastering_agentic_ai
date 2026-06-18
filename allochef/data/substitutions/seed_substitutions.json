@@ -2,6 +2,20 @@
   "substitutions": [
 
     {
+      "original": "paneer",
+      "substitute": "firm tofu",
+      "allergen": "milk",
+      "works_in": ["curries", "stir-fries", "grilling", "frying"],
+      "notes": "Firm/extra-firm tofu holds its shape and absorbs spices like paneer. Press before use. 1:1 by volume."
+    },
+    {
+      "original": "halloumi",
+      "substitute": "firm tofu",
+      "allergen": "milk",
+      "works_in": ["grilling", "frying"],
+      "notes": "Press and pan-sear firm tofu for a similar grillable bite."
+    },
+    {
       "original": "butter",
       "substitute": "coconut oil",
       "allergen": "milk",

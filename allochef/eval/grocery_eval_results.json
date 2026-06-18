@@ -1,0 +1,99 @@
+{
+  "total": 23,
+  "passed": 23,
+  "failed": 0,
+  "results": [
+    {
+      "label": "chicken breast matched from pantry",
+      "passed": true
+    },
+    {
+      "label": "garlic cloves matched from pantry",
+      "passed": true
+    },
+    {
+      "label": "onion matched from pantry",
+      "passed": true
+    },
+    {
+      "label": "butter in missing_ingredients",
+      "passed": true
+    },
+    {
+      "label": "rice in missing_ingredients",
+      "passed": true
+    },
+    {
+      "label": "parsley in missing_ingredients",
+      "passed": true
+    },
+    {
+      "label": "butter flagged unsafe (milk)",
+      "passed": true
+    },
+    {
+      "label": "rice is safe",
+      "passed": true
+    },
+    {
+      "label": "parsley is safe",
+      "passed": true
+    },
+    {
+      "label": "already_have is empty for empty pantry",
+      "passed": true
+    },
+    {
+      "label": "all ingredients are missing",
+      "passed": true
+    },
+    {
+      "label": "all items safe with no restrictions",
+      "passed": true
+    },
+    {
+      "label": "no unsafe items",
+      "passed": true
+    },
+    {
+      "label": "olive oil matched from pantry",
+      "passed": true
+    },
+    {
+      "label": "tomato paste flagged as uncertain",
+      "passed": true
+    },
+    {
+      "label": "pasta in missing",
+      "passed": true
+    },
+    {
+      "label": "garlic in missing",
+      "passed": true
+    },
+    {
+      "label": "cart has items",
+      "passed": true
+    },
+    {
+      "label": "cart status is draft",
+      "passed": true
+    },
+    {
+      "label": "cart has created_at timestamp",
+      "passed": true
+    },
+    {
+      "label": "cart note says no order placed",
+      "passed": true
+    },
+    {
+      "label": "rice categorised as pantry",
+      "passed": true
+    },
+    {
+      "label": "olive oil categorised as pantry",
+      "passed": true
+    }
+  ]
+}

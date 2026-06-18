@@ -22,15 +22,11 @@ from pinecone_text.sparse import BM25Encoder
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     BM25_ENCODER_PATH,
-    NEO4J_PASSWORD,
-    NEO4J_URI,
-    NEO4J_USERNAME,
     OPENAI_API_KEY,
     PINECONE_API_KEY,
     PINECONE_INDEX_NAME,
     PINECONE_SUBS_INDEX,
 )
-from ingestion.graph_loader import query_substitutes
 
 from agent.run_logger import log_check
 from agent.state import AlloChefState
@@ -62,6 +58,8 @@ _ALLERGEN_TO_INGREDIENTS: dict[str, list[str]] = {
         "cheese", "cheddar", "mozzarella", "parmesan", "parmigiano", "brie",
         "gouda", "swiss", "gruyere", "ricotta", "cottage cheese", "feta",
         "provolone", "gorgonzola", "mascarpone", "velveeta",
+        # fresh / regional cheeses
+        "paneer", "halloumi", "queso fresco", "queso", "burrata",
         # fermented
         "yogurt", "greek yogurt", "kefir",
         # protein fractions (common in processed / packaged foods)
@@ -179,19 +177,92 @@ _ALLERGEN_TO_INGREDIENTS: dict[str, list[str]] = {
     ],
 }
 
+# Markers that signal a dairy-free analog — "almond milk", "oat milk",
+# "vegan butter" contain a dairy word but are NOT dairy.
+_DAIRY_FREE_MARKERS = (
+    "vegan", "dairy-free", "dairy free", "non-dairy", "non dairy",
+    "plant-based", "plant based", "almond", "soy", "oat", "cashew",
+    "coconut", "rice", "hemp", "pea protein", "nutritional yeast",
+)
+
+
+def detect_allergens(item: str, restrictions: list[str]) -> list[str]:
+    """
+    Analog-aware allergen detection: which of `restrictions` does `item`
+    actually contain? Substring match against the allergen ingredient lists,
+    BUT a milk hit is ignored when the item is clearly a dairy-free analog
+    ("almond milk", "vegan butter", "oat cheese"), since the dairy word there
+    is a category label rather than real dairy. Note an almond/soy analog still
+    correctly trips tree_nuts/soy.
+
+    Shared by the Allergy Safety Agent (triage) and the Substitution Agent's
+    deterministic safety fallback.
+    """
+    s = item.lower()
+    violations: list[str] = []
+    for allergen in restrictions:
+        hits = any(ing in s for ing in _ALLERGEN_TO_INGREDIENTS.get(allergen, []))
+        if not hits:
+            continue
+        if allergen == "milk" and any(m in s for m in _DAIRY_FREE_MARKERS):
+            continue
+        violations.append(allergen)
+    return violations
+
 
 _RECIPE_FORMAT = """\
 **[Recipe Name]**
 - [One sentence on why this is a great match — style, flavor, or occasion. Do NOT list ingredients.]
 
 Ingredients:
-- [copy each ingredient exactly as listed in the context, one per line]
+- [ingredient name] | [amount] [unit]
+- [ingredient name] | [amount] [unit]
 
 Steps:
 1. [Split Raw instructions into one logical action per step. Do not add or remove any information — only split into clear numbered steps.]
 2. [...]
 
 ---"""
+
+_QUANTITY_RULES = """\
+QUANTITY RULES (for the Ingredients list):
+- Keep the ingredient NAME exactly as it appears in the context, then add ` | amount unit`.
+- Estimate a sensible shopping amount for a typical 2-4 serving batch of this recipe.
+- unit must be one of: each, g, kg, ml, l, tsp, tbsp, cup, clove, can, bunch, pinch, slice, lb, oz.
+- Use whole or simple decimal amounts (1, 2, 0.5, 1.5). Use "each" for countable whole items.
+- Examples:
+    chicken breast | 2 each
+    olive oil | 2 tbsp
+    garlic cloves | 3 clove
+    tomatoes | 4 each
+    sea salt | 1 tsp"""
+
+_SUBSTITUTION_RULES = """\
+SUBSTITUTION OVERRIDE — this block overrides ALL other rules including "copy exactly" and "copy the recipe name exactly":
+
+When a recipe appears under 'Substitutions available', apply ALL four steps:
+
+  STEP 1 — RENAME THE RECIPE TITLE:
+    If the substitution line includes a 'rename the recipe title to "..."' instruction, use that EXACT title
+    in the **Name** bold header.
+    Otherwise, if the allergen ingredient word appears anywhere in the recipe's ### heading title, replace it
+    with the substitute word.
+    Examples:
+      "Crab Cakes" with crab → jackfruit  becomes  "Jackfruit Cakes"
+      "Butter Chicken" with butter → olive oil  becomes  "Olive Oil Chicken"
+      "Creamy Shrimp Pasta" with shrimp → tofu  becomes  "Creamy Tofu Pasta"
+    Write the updated name in the **Name** bold header.
+
+  STEP 2 — REPLACE IN INGREDIENTS:
+    Every line in the Ingredients list that mentions the allergen ingredient must use the substitute instead.
+
+  STEP 3 — REPLACE IN STEPS:
+    Every instruction step that mentions the allergen ingredient must use the substitute instead.
+
+  STEP 4 — VERIFY BEFORE OUTPUT:
+    Re-read your output for this recipe. The allergen ingredient word must not appear anywhere —
+    not in the name, not in the description, not in the ingredients, not in the steps.
+    If it still appears, fix it before output."""
 
 _RESPONSE_PROMPT = ChatPromptTemplate.from_messages([
     ("system", f"""You are AlloChef, a warm and practical cooking assistant for multi-diet families.
@@ -203,12 +274,15 @@ Format each recipe exactly like this:
 
 {_RECIPE_FORMAT}
 
-Rules:
+Standard rules (apply to all recipes WITHOUT a substitution):
 - Copy the recipe name exactly as it appears in the context (### heading).
-- Copy ingredients exactly from the context. Do not add or remove any.
+- Copy each ingredient NAME exactly from the context. Do not add or remove any ingredients.
 - Split Raw instructions into numbered steps — one action per step. Do not add, remove, or rephrase any information.
 - The one-line description must focus on style, flavor, or occasion only.
-- SUBSTITUTION OVERRIDE: If a recipe appears in 'Substitutions available', you MUST replace every mention of the allergen ingredient with its listed substitute — in BOTH the Ingredients list AND every Step. The allergen ingredient must NOT appear anywhere in your output for that recipe. This rule overrides the "copy exactly" rule above."""),
+
+{_QUANTITY_RULES}
+
+{_SUBSTITUTION_RULES}"""),
     ("human", (
         "Available ingredients: {ingredients}\n"
         "Eating tonight: {active_members}\n"
@@ -221,17 +295,20 @@ Rules:
 
 _RESPONSE_PROMPT_STRICT = ChatPromptTemplate.from_messages([
     ("system", f"""You are AlloChef. Your previous response referenced a recipe not in the context.
-You MUST only use recipes from the context. Copy recipe names exactly as they appear (### heading).
+You MUST only use recipes from the context.
 
 Format each recipe exactly like this:
 
 {_RECIPE_FORMAT}
 
-Rules:
-- Copy the recipe name exactly — do not paraphrase or shorten it.
-- Copy ingredients exactly from context. Do not add or remove any.
+Standard rules (apply to all recipes WITHOUT a substitution):
+- Copy the recipe name exactly as it appears in the context (### heading).
+- Copy each ingredient NAME exactly from context. Do not add or remove any ingredients.
 - Copy steps exactly from Raw instructions. Do not add, remove, reorder, or rephrase any step.
-- SUBSTITUTION OVERRIDE: If a recipe appears in 'Substitutions available', replace every mention of the allergen ingredient with its substitute in BOTH Ingredients AND Steps. The allergen must not appear in your output for that recipe."""),
+
+{_QUANTITY_RULES}
+
+{_SUBSTITUTION_RULES}"""),
     ("human", (
         "Available ingredients: {ingredients}\n"
         "Eating tonight: {active_members}\n"
@@ -402,88 +479,20 @@ def allergen_check_node(state: AlloChefState) -> dict:
     return {"safe_recipes": safe, "unsafe_pairs": unsafe}
 
 
-def _recipe_ingredients(doc) -> list[str]:
-    """Parse ingredient list from the stored text metadata field."""
-    text = doc.metadata.get("text", "")
-    for line in text.splitlines():
-        if line.lower().startswith("ingredients:"):
-            return [i.strip() for i in line.split(":", 1)[1].split(",")]
-    return []
-
-
 def retrieve_substitute_node(state: AlloChefState) -> dict:
     """
-    For each unsafe recipe + allergen:
-      1. Query Neo4j for deterministic substitutes (Tier 1)
-      2. Fall back to Pinecone semantic search if Neo4j has nothing (Tier 2)
-    Only looks up ingredients actually present in the recipe (parsed from metadata),
-    not every possible allergen ingredient — avoids hundreds of redundant lookups.
+    Graph adapter for the recipe-recommendation flow. All substitution logic
+    (candidate lookup + context-aware selection + safety) lives in the
+    Substitution Agent; this node just unpacks state and applies the result.
     """
-    unsafe_pairs  = state.get("unsafe_pairs", [])
-    restrictions  = state.get("restrictions", [])
-    substitutions = []
+    # lazy import avoids a circular dependency (substitution_agent imports from this module)
+    from agent.substitution_agent import find_recipe_substitutions
 
-    for pair in unsafe_pairs:
-        doc          = pair["doc"]
-        recipe_name  = doc.metadata.get("name", "Unknown recipe")
-        recipe_id    = doc.metadata.get("recipe_id", "")
-
-        for allergen in pair["allergens"]:
-            available_substitutes = []
-
-            # find allergen ingredients that appear in the recipe text (substring match).
-            # _recipe_ingredients() reads metadata["text"] which is absent on instruction
-            # chunks, so we scan page_content directly — same approach as _confirmed_allergen.
-            recipe_text   = (doc.page_content + " " + doc.metadata.get("text", "")).lower()
-            allergen_ings = _ALLERGEN_TO_INGREDIENTS.get(allergen, [])
-            # deduplicate; prefer longer (more-specific) matches first so "shrimp paste"
-            # is looked up before "shrimp"
-            culprit_ings  = list({
-                ing for ing in allergen_ings if ing in recipe_text
-            })
-            culprit_ings.sort(key=len, reverse=True)
-
-            # if nothing matched (shouldn't happen, but be safe), skip
-            if not culprit_ings:
-                continue
-
-            for ingredient in culprit_ings:
-                neo4j_subs = query_substitutes(NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD,
-                                               ingredient, allergen)
-                if neo4j_subs:
-                    # filter: substitute must not trigger any other active restriction
-                    safe_subs = [
-                        s for s in neo4j_subs
-                        if not any(
-                            s["substitute"].lower() in _ALLERGEN_TO_INGREDIENTS.get(other, [])
-                            for other in restrictions
-                            if other != allergen
-                        )
-                    ]
-                    for s in safe_subs:
-                        available_substitutes.append({
-                            "original":   ingredient,
-                            "substitute": s["substitute"],
-                            "works_in":   s.get("works_in", []),
-                            "notes":      s.get("notes", ""),
-                            "source":     "neo4j",
-                        })
-                else:
-                    # Tier 2 fallback: Pinecone semantic search
-                    pinecone_subs = _pinecone_substitute_fallback(ingredient, allergen)
-                    for s in pinecone_subs:
-                        available_substitutes.append({**s, "source": "pinecone"})
-
-            if available_substitutes:
-                substitutions.append({
-                    "recipe_name":           recipe_name,
-                    "recipe_id":             recipe_id,
-                    "allergen":              allergen,
-                    "available_substitutes": available_substitutes,
-                })
-                # recipe now has substitutes — add to safe list
-                state["safe_recipes"].append(doc)
-
+    substitutions, newly_safe = find_recipe_substitutions(
+        state.get("unsafe_pairs", []),
+        state.get("restrictions", []),
+    )
+    state["safe_recipes"].extend(newly_safe)
     return {"substitutions": substitutions}
 
 
@@ -531,15 +540,24 @@ def generate_response_node(state: AlloChefState) -> dict:
         recipes_lines.append("")
     recipes_context = "\n".join(recipes_lines) if recipes_lines else "No safe recipes found."
 
-    # format substitution context
+    # format substitution context — one line per substitution, explicit recipe + allergen word.
+    # uses the substitution agent's context-aware pick + the natural renamed title.
     subs_lines: list[str] = []
     for entry in substitutions:
-        for sub in entry["available_substitutes"][:2]:  # top 2 per allergen
-            works = ", ".join(sub.get("works_in", []))
-            subs_lines.append(
-                f"- In {entry['recipe_name']}: replace {sub['original']} "
-                f"→ {sub['substitute']} (works in: {works}) {sub.get('notes', '')}"
+        recipe_name   = entry["recipe_name"]
+        allergen      = entry["allergen"]
+        renamed_title = entry.get("renamed_title", "")
+        for sub in entry["available_substitutes"][:1]:  # top substitute per allergen
+            reason = sub.get("reason") or sub.get("notes", "")
+            line = (
+                f'Recipe "{recipe_name}" | allergen: {allergen} | '
+                f'replace the word "{sub["original"]}" with "{sub["substitute"]}"'
             )
+            if renamed_title:
+                line += f' | rename the recipe title to "{renamed_title}"'
+            if reason:
+                line += f" | reason: {reason}"
+            subs_lines.append(line)
     substitutions_context = "\n".join(subs_lines) if subs_lines else "No substitutions needed."
 
     # use stricter grounding prompt on retry after a hallucination was detected
@@ -640,6 +658,13 @@ def check_hallucination_node(state: AlloChefState) -> dict:
     seen_names: set[str] = set()
     for d in safe_recipes:
         seen_names.add(" ".join(d.metadata.get("name", "Unknown").split()))
+    # also allow the Substitution Agent's renamed titles — these are legitimate
+    # renames of retrieved recipes (e.g. "Garlic Chicken" → "Garlic Chicken with
+    # Vegan Mozzarella"), not hallucinations, so the judge must accept them.
+    for entry in state.get("substitutions", []):
+        renamed = entry.get("renamed_title", "")
+        if renamed:
+            seen_names.add(" ".join(renamed.split()))
     context = "\n".join(f"- {n}" for n in sorted(seen_names))
 
     if not context:

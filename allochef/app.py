@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import sys
+import uuid
 from pathlib import Path
 
 import streamlit as st
@@ -14,9 +15,11 @@ from openai import OpenAI
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from agent.graph import graph
+from agent.grocery_agent import build_cart, run_grocery_agent
+from agent.meal_orchestrator import restrictions_for, run_meal_orchestrator
 from agent.run_logger import read_recent_checks
 from config import ALLERGEN_NAMES, OPENAI_API_KEY
+from pantry import add_pantry_items, clear_pantry, list_pantry_items, remove_pantry_item
 from profiles import (
     add_member,
     get_allergens,
@@ -244,7 +247,7 @@ html, body, [class*="css"] {
     justify-content: center !important;
     background: transparent !important;
 }
-[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="secondary"] {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -265,7 +268,7 @@ html, body, [class*="css"] {
     align-items: center !important;
     justify-content: center !important;
 }
-[data-testid="stSidebar"] div[data-testid="stButton"] > button *  {
+[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="secondary"] * {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -275,9 +278,22 @@ html, body, [class*="css"] {
     width: 100% !important;
     height: 100% !important;
 }
-[data-testid="stSidebar"] div[data-testid="stButton"] > button:hover {
+[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="secondary"]:hover {
     background: #FFE0D6 !important;
     color: #C0504A !important;
+}
+/* Manage Pantry — full-width primary button in sidebar */
+[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="primary"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    padding: 0.45rem 1rem !important;
+    height: auto !important;
+    min-height: 38px !important;
+    border-radius: 8px !important;
+    margin: 6px 0 0 0 !important;
 }
 
 /* ── Section labels ── */
@@ -573,6 +589,42 @@ button[data-testid="baseButton-headerNoPadding"] {
     visibility: visible !important;
     opacity: 1 !important;
 }
+
+/* ── Uniform recipe cards ── */
+/* Each content section has a fixed height, so every card is the same overall
+   height (and the action buttons line up) no matter the recipe. Robust because
+   it doesn't depend on Streamlit's flex/DOM nesting. */
+.rc-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #2D3436;
+    line-height: 1.25;
+    margin-bottom: 4px;
+    min-height: 2.6em;            /* up to 2 lines of title */
+}
+.rc-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: flex-start;
+    min-height: 60px;            /* up to 2 rows of allergen pills */
+    margin: 8px 0 4px;
+}
+.rc-ing-preview {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.6em;           /* exactly 2 lines */
+    font-size: 0.8rem;
+    color: #6b7c77;
+    margin: 2px 0 4px;
+}
+.rc-pantry {
+    min-height: 3.4em;           /* "You have X" + up to 2 "Need:" lines */
+    margin: 6px 0 2px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -581,13 +633,41 @@ button[data-testid="baseButton-headerNoPadding"] {
 for key, default in [
     ("result", None),
     ("ingredients_input", ""),
+    ("chat_reply", ""),            # latest assistant reply from the Meal Orchestrator
     ("scan_just_done", False),
     ("scan_count", 0),
+    # grocery planning workflow
+    ("grocery_phase", None),       # None | "planning" | "awaiting_approval" | "resuming" | "cart_ready"
+    ("grocery_recipe", None),      # dict: {name, ingredients, steps, description}
+    ("grocery_thread_id", None),   # str: LangGraph thread ID for resuming after interrupt
+    ("grocery_plan_data", None),   # dict: grocery plan returned by the graph
+    ("grocery_cart", None),        # dict: cart draft after approval
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _fmt_amt(a) -> str:
+    """Format a quantity amount without a trailing .0 (2.0 -> '2', 1.5 -> '1.5')."""
+    try:
+        f = float(a)
+        return str(int(f)) if f == int(f) else str(f)
+    except (TypeError, ValueError):
+        return str(a)
+
+
+def _qty_label(amount, unit, name: str) -> str:
+    """
+    Human-friendly quantity label. 'each' is a count, not a word to show:
+      (2, 'each', 'chicken breast') -> '2 × chicken breast'
+      (2, 'tbsp', 'olive oil')      -> '2 tbsp olive oil'
+    """
+    a = _fmt_amt(amount)
+    if unit in (None, "", "each"):
+        return f"{a} × {name}"
+    return f"{a} {unit} {name}"
+
 
 def _parse_response(text: str) -> tuple[str, dict]:
     """Split the structured LLM response into display text and per-recipe card data.
@@ -619,6 +699,7 @@ def _parse_response(text: str) -> tuple[str, dict]:
 
         ingredients: list[str] = []
         steps:       list[str] = []
+        quantities:  dict      = {}   # clean_name -> {"amount": float, "unit": str}
         section = None
         for line in content.splitlines():
             stripped = line.strip()
@@ -633,8 +714,19 @@ def _parse_response(text: str) -> tuple[str, dict]:
                 continue
             if section == "ingredients" and stripped.startswith("-"):
                 ing = stripped.lstrip("- ").strip()
+                if not ing:
+                    continue
+                # split "name | amount unit"; quantity portion is optional
+                amount, unit = 1.0, "each"
+                if "|" in ing:
+                    ing, qty_part = (p.strip() for p in ing.split("|", 1))
+                    qm = re.match(r'^([\d]+(?:\.[\d]+)?)\s*(.*)$', qty_part)
+                    if qm:
+                        amount = float(qm.group(1))
+                        unit   = (qm.group(2).strip() or "each")
                 if ing:
                     ingredients.append(ing)
+                    quantities[ing] = {"amount": amount, "unit": unit}
             elif section == "steps":
                 m = re.match(r'^\d+\.\s*(.+)', stripped)
                 if m:
@@ -644,6 +736,7 @@ def _parse_response(text: str) -> tuple[str, dict]:
             "name":        title_name,
             "description": description,
             "ingredients": ingredients,
+            "quantities":  quantities,
             "steps":       steps,
         }
 
@@ -679,15 +772,9 @@ def extract_ingredients_from_image(image_bytes: bytes) -> list[str]:
     return [i.strip() for i in raw.split(",") if i.strip()]
 
 
-def run_agent(ingredients: list[str], active_members: list[str], profiles: dict) -> dict:
-    return graph.invoke({
-        "ingredients":         ingredients,
-        "active_members":      active_members,
-        "family_profiles":     profiles,
-        "messages":            [],
-        "retrieval_attempts":  0,
-        "generation_attempts": 0,
-    })
+# Recipe discovery now flows entirely through the Meal Orchestrator
+# (run_meal_orchestrator) from the chat box — the orchestrator routes the raw
+# user message to the Recipe Recommender, which reads the pantry when asked.
 
 
 AVATAR_PALETTE = [
@@ -740,6 +827,79 @@ def render_recipe_card(doc, safe: bool = True) -> None:
       {'<div class="recipe-card-body"><div class="badge-row">' + badges + '</div></div>' if badges else ''}
     </div>
     """, unsafe_allow_html=True)
+
+
+# ── Pantry dialog ─────────────────────────────────────────────────────────────
+
+@st.dialog("My Pantry", width="large")
+def pantry_dialog() -> None:
+    all_items = list_pantry_items()
+
+    # explicit close button (top-right) — app-scope rerun dismisses the dialog
+    _, c_close = st.columns([8, 1])
+    with c_close:
+        if st.button("✕", key="dlg_close", help="Close pantry"):
+            st.rerun()
+
+    search = st.text_input("Search pantry", placeholder="e.g. garlic", label_visibility="visible")
+    filtered = [
+        item for item in all_items
+        if not search or search.lower() in item["item_name"].lower()
+    ]
+
+    st.markdown(
+        f'<div style="font-size:0.8rem;color:#8A9E96;margin:4px 0 10px">'
+        f'{len(all_items)} item{"s" if len(all_items) != 1 else ""} saved</div>',
+        unsafe_allow_html=True,
+    )
+
+    if filtered:
+        # render items as removable chips in a flow layout
+        # group into rows of 3 columns
+        cols_per_row = 3
+        for i in range(0, len(filtered), cols_per_row):
+            row_items = filtered[i : i + cols_per_row]
+            cols = st.columns(cols_per_row)
+            for col, item in zip(cols, row_items):
+                with col:
+                    c_name, c_del = st.columns([4, 1], vertical_alignment="center")
+                    with c_name:
+                        st.markdown(
+                            f'<div style="background:#F0F5F3;border:1px solid #DDE8E4;'
+                            f'border-radius:8px;padding:6px 10px;font-size:0.87rem;'
+                            f'color:#2D3436">{item["item_name"]}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    with c_del:
+                        if st.button("✕", key=f"dlg_del_{item['normalized_name']}",
+                                     help=f"Remove {item['item_name']}"):
+                            remove_pantry_item(item["normalized_name"])
+                            st.rerun(scope="fragment")
+    elif all_items:
+        st.caption("No items match your search.")
+    else:
+        st.info("Your pantry is empty. Add items below to enable grocery planning.")
+
+    st.divider()
+    st.markdown("**Add items**")
+    with st.form("dlg_add_form", clear_on_submit=True):
+        new_input = st.text_input(
+            "Items",
+            placeholder="chicken, garlic, olive oil",
+            label_visibility="collapsed",
+        )
+        col_add, col_clear, _ = st.columns([2, 2, 3])
+        with col_add:
+            do_add = st.form_submit_button("Add items", use_container_width=True, type="primary")
+        with col_clear:
+            do_clear = st.form_submit_button("Clear all", use_container_width=True)
+
+    if do_add and new_input.strip():
+        add_pantry_items([i.strip() for i in new_input.replace("\n", ",").split(",") if i.strip()])
+        st.rerun(scope="fragment")
+    if do_clear:
+        clear_pantry()
+        st.rerun(scope="fragment")
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -810,6 +970,38 @@ with st.sidebar:
         if submitted and new_name.strip():
             add_member(new_name.strip())
             st.rerun()
+
+    st.divider()
+
+    # ── My Pantry — compact control ───────────────────────────────────────────
+    st.markdown('<div class="section-label">My Pantry</div>', unsafe_allow_html=True)
+
+    _sidebar_pantry = list_pantry_items()
+    _pantry_count   = len(_sidebar_pantry)
+
+    if _pantry_count == 0:
+        st.caption("No items saved yet.")
+    else:
+        st.markdown(
+            f'<div style="font-size:0.88rem;color:#3D7A6A;font-weight:500;'
+            f'margin-bottom:6px">{_pantry_count} item{"s" if _pantry_count != 1 else ""} saved</div>',
+            unsafe_allow_html=True,
+        )
+        # preview chips — first 3 items + overflow count
+        _preview = [p["item_name"].title() for p in _sidebar_pantry[:3]]
+        _overflow = _pantry_count - 3
+        _chip_text = " · ".join(_preview)
+        if _overflow > 0:
+            _chip_text += f" +{_overflow} more"
+        st.markdown(
+            f'<div style="font-size:0.78rem;color:#7A9E96;margin-bottom:10px">{_chip_text}</div>',
+            unsafe_allow_html=True,
+        )
+
+    if st.button("🗂  Manage pantry", use_container_width=True, key="open_pantry_dialog", type="primary"):
+        # flag so the grocery dialog isn't also opened this run (only one dialog allowed)
+        st.session_state["_pantry_opening"] = True
+        pantry_dialog()
 
     st.divider()
     with st.expander("🔍  Agent debug log"):
@@ -885,96 +1077,49 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-# ── Ingredient input ──────────────────────────────────────────────────────────
+# ── Ask AlloChef (chat) ────────────────────────────────────────────────────────
 
-st.markdown('<div class="section-label">What do you have in the kitchen?</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label">Ask AlloChef</div>', unsafe_allow_html=True)
+st.caption(
+    'Ask in plain English — "what can I cook tonight with what I have?" — or just '
+    'list ingredients like "chicken, garlic, tomato". I\'ll keep your family\'s allergens in mind.'
+)
 
-tab_text, tab_photo = st.tabs(["  Type ingredients  ", "  Scan fridge photo  "])
-
-with tab_text:
-    st.markdown("""
-    <div style="margin-bottom: 8px">
-      <span style="font-size:0.9rem; color:#555">
-        List what you have — separate with commas or new lines.
-      </span>
-    </div>
-    """, unsafe_allow_html=True)
-    typed = st.text_area(
-        "ingredients",
-        value=st.session_state.ingredients_input,
-        placeholder="chicken, garlic, tomatoes, olive oil, lemon, onion...",
-        height=110,
-        label_visibility="collapsed",
-    )
-    if typed != st.session_state.ingredients_input:
-        st.session_state.ingredients_input = typed
-
-with tab_photo:
-    st.markdown("""
-    <div style="margin-bottom: 12px">
-      <span style="font-size:0.9rem; color:#555">
-        Upload a photo of your fridge or pantry — GPT-4o will identify the ingredients.
-      </span>
-    </div>
-    """, unsafe_allow_html=True)
-    uploaded = st.file_uploader(
-        "Upload photo",
-        type=["jpg", "jpeg", "png"],
-        label_visibility="collapsed",
-    )
-    if st.session_state.scan_just_done:
-        n = st.session_state.scan_count
-        st.markdown(
-            f'<div style="background:#D6F0D6;border:1px solid #A8D4A8;border-radius:10px;'
-            f'padding:12px 18px;margin-bottom:12px;font-size:0.9rem;color:#2A6A2A">'
-            f'✅ <strong>Scan complete</strong> — {n} ingredient{"s" if n != 1 else ""} identified. '
-            f'Switch to the <em>Type ingredients</em> tab to review or edit them.</div>',
-            unsafe_allow_html=True,
-        )
-        st.session_state.scan_just_done = False
-
+# Optional: scan a fridge photo straight into your pantry, then ask what to cook
+with st.expander("📷  Scan a fridge photo into your pantry"):
+    uploaded = st.file_uploader("Upload photo", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
     if uploaded:
-        col_img, col_gap, col_btn = st.columns([3, 1, 2])
-        with col_img:
-            st.image(uploaded, use_container_width=True)
-        with col_btn:
-            st.markdown("<br><br>", unsafe_allow_html=True)
-            if st.button("Scan for ingredients", type="primary", use_container_width=True):
-                with st.spinner("Identifying ingredients..."):
-                    found = extract_ingredients_from_image(uploaded.read())
-                if found:
-                    st.session_state.ingredients_input = ", ".join(found)
-                    st.session_state.scan_just_done = True
-                    st.session_state.scan_count = len(found)
-                    st.rerun()
-                else:
-                    st.warning("Could not identify ingredients. Try a clearer photo.")
+        st.image(uploaded, use_container_width=True)
+        if st.button("Scan & add to pantry", type="primary"):
+            with st.spinner("Identifying ingredients..."):
+                found = extract_ingredients_from_image(uploaded.read())
+            if found:
+                add_pantry_items(found)
+                st.success(f"Added {len(found)} item{'s' if len(found) != 1 else ''} to your pantry: {', '.join(found)}")
+                st.rerun()
+            else:
+                st.warning("Could not identify ingredients. Try a clearer photo.")
 
-ingredients = [
-    i.strip()
-    for i in st.session_state.ingredients_input.replace("\n", ",").split(",")
-    if i.strip()
-]
-
-# ── Find Recipes ──────────────────────────────────────────────────────────────
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-col_btn, _ = st.columns([2, 5])
-with col_btn:
-    find_clicked = st.button(
-        "Find Recipes",
-        type="primary",
-        use_container_width=True,
+# latest assistant reply
+if st.session_state.get("chat_reply"):
+    st.markdown(
+        f'<div style="background:#F0F7F5;border:1px solid #C8DDD8;border-radius:12px;'
+        f'padding:12px 16px;margin:10px 0;font-size:0.92rem;color:#2D3436;line-height:1.5">'
+        f'{st.session_state.chat_reply}</div>',
+        unsafe_allow_html=True,
     )
 
-if find_clicked and ingredients:
+_user_msg = st.chat_input("e.g. 'what can I cook with what I have?'  or  'chicken, garlic, tomato'")
+if _user_msg:
     st.session_state.result = None
-    with st.spinner("Finding recipes safe for everyone..."):
+    with st.spinner("AlloChef is thinking…"):
         try:
-            st.session_state.result = run_agent(ingredients, active_members, profiles)
+            _res = run_meal_orchestrator(_user_msg, active_members, profiles)
+            st.session_state.result     = _res.get("rag")
+            st.session_state.chat_reply = _res.get("text", "")
         except Exception as e:
-            st.error(f"Something went wrong: {e}")
+            st.session_state.chat_reply = f"Something went wrong: {e}"
+    st.rerun()
 
 # ── Results ───────────────────────────────────────────────────────────────────
 
@@ -1059,10 +1204,15 @@ if result:
 
             # prefer LLM-parsed ingredients; fall back to Pinecone overview chunk
             display_ingredients = (llm_card or {}).get("ingredients") or ingredients
+            _qty_map = (llm_card or {}).get("quantities", {}) or {}
             if display_ingredients:
                 st.markdown("**Ingredients**")
                 for ing in display_ingredients:
-                    st.markdown(f"- {ing}")
+                    q = _qty_map.get(ing)
+                    if q:
+                        st.markdown(f"- {_qty_label(q.get('amount', 1), q.get('unit', 'each'), ing)}")
+                    else:
+                        st.markdown(f"- {ing}")
 
             ftags = food_tags(tags)
             if ftags:
@@ -1097,9 +1247,41 @@ if result:
                     st.markdown("**Instructions**")
                     st.markdown(raw)
 
+        # load pantry once for the whole grid (fast SQLite call)
+        from agent.pantry_tools import compare_pantry_tool as _cpt
+        _pantry_for_cards = list_pantry_items()
+
+        # build a lookup: recipe_id → substitution entry (so cards can show renamed title)
+        sub_by_rid: dict[str, dict] = {}
+        for sub_entry in substitutions:
+            rid_s = sub_entry.get("recipe_id", "")
+            if rid_s:
+                sub_by_rid[rid_s] = sub_entry
+
+        def _apply_sub_to_title(title: str, sub_entry: dict) -> str:
+            """Use the substitution agent's natural renamed title; fall back to a
+            deterministic word-replace of the allergen ingredient."""
+            renamed = (sub_entry.get("renamed_title") or "").strip()
+            if renamed:
+                return renamed.title()
+            for sub in sub_entry.get("available_substitutes", [])[:1]:
+                original   = sub.get("original", "").strip()
+                substitute = sub.get("substitute", "").strip()
+                if original and substitute:
+                    import re as _re2
+                    title = _re2.sub(rf'\b{_re2.escape(original)}\b', substitute, title, flags=_re2.IGNORECASE)
+            return title.title()
+
         def _render_recipe_grid(items: list, safe: bool) -> None:
             top_bg   = "linear-gradient(160deg,#F0F7F5,#EDF5F0)" if safe else "linear-gradient(160deg,#FDF5F3,#FFF0EC)"
             cols_per = 3
+
+            # normalized lookup of the LLM cards (strip "(N min)" suffix + lowercase)
+            import re as _rx
+            def _nn(s: str) -> str:
+                s = _rx.sub(r'\s*\(\d+[\d.]*\s*min\)', '', s or '', flags=_rx.IGNORECASE)
+                return " ".join(s.lower().split())
+            card_by_norm = {_nn(k): v for k, v in card_data.items()}
             for row_start in range(0, len(items), cols_per):
                 row  = items[row_start:row_start + cols_per]
                 cols = st.columns(cols_per, gap="medium")
@@ -1110,7 +1292,7 @@ if result:
                         key=lambda d: d.metadata.get("chunk_index", 0),
                     )
                     meta        = overview_doc.metadata
-                    name        = meta.get("name", "unknown recipe").title()
+                    raw_name    = meta.get("name", "unknown recipe").title()
                     minutes     = meta.get("minutes")
                     time_str    = f"{int(minutes)} min" if minutes else "—"
                     tags        = meta.get("tags", [])
@@ -1120,33 +1302,114 @@ if result:
                     pinecone_ings = parse_ingredients(overview_doc.page_content)
                     servings    = parse_servings(tags)
                     flag_labels = [ALLERGEN_LABELS[a] for a in flags]
-                    llm_card    = card_data.get(" ".join(meta.get("name", "").lower().split()))
+
+                    # match the LLM card by recipe name; if this recipe was renamed by a
+                    # substitution (e.g. "Palak Paneer" → "Palak Tofu"), the LLM keyed its
+                    # card under the renamed title, so try that too — otherwise the card
+                    # falls back to raw Pinecone data (no parsed ingredients / steps).
+                    card_sub = sub_by_rid.get(rid)
+                    llm_card = card_by_norm.get(_nn(meta.get("name", "")))
+                    if not llm_card and card_sub and card_sub.get("renamed_title"):
+                        llm_card = card_by_norm.get(_nn(card_sub["renamed_title"]))
+
+                    # if a substitution exists for this recipe, apply it to the title
+                    # and badge the card — deterministic, doesn't depend on LLM name matching
+                    if card_sub:
+                        name = _apply_sub_to_title(raw_name, card_sub)
+                        sub_word     = (card_sub.get("available_substitutes") or [{}])[0]
+                        sub_badge    = (
+                            f'<span style="display:inline-block;background:#D6F0D6;color:#2A6A2A;'
+                            f'padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;'
+                            f'margin-left:6px">sub: {sub_word.get("original","?")} → {sub_word.get("substitute","?")}</span>'
+                        )
+                        _reason   = card_sub.get("reason") or sub_word.get("reason", "")
+                        sub_reason_html = (
+                            f'<div style="font-size:0.74rem;color:#3D7A6A;font-style:italic;'
+                            f'margin:4px 0 0;line-height:1.3">↳ {_reason}</div>'
+                            if _reason else ""
+                        )
+                    else:
+                        name     = raw_name
+                        sub_badge = ""
+                        sub_reason_html = ""
+
                     preview_ings = (llm_card or {}).get("ingredients") or pinecone_ings
                     ing_preview = ", ".join(preview_ings[:5]) + (f" +{len(preview_ings)-5} more" if len(preview_ings) > 5 else "")
-                    badge_block = f'<div class="badge-row" style="margin:8px 0 4px">{badges}</div>' if badges else ""
+                    badge_block = f'<div class="rc-badges">{badges}</div>'
+
+                    # pantry diff — built as fixed-height HTML so all cards align
+                    pantry_html = ""
+                    if _pantry_for_cards and preview_ings:
+                        _diff = _cpt(preview_ings, _pantry_for_cards)
+                        _have  = len(_diff["already_have"])
+                        _total = len(preview_ings)
+                        _need  = _diff["missing_ingredients"][:3]
+                        _need_str = ", ".join(_need) + ("…" if len(_diff["missing_ingredients"]) > 3 else "")
+                        _have_color = "#2A6A2A" if _have == _total else "#8A6500" if _have > 0 else "#7A2A2A"
+                        pantry_html = (
+                            f'<div style="font-size:0.78rem;color:{_have_color};font-weight:500">'
+                            f'You have {_have} of {_total} ingredients</div>'
+                            + (f'<div style="font-size:0.75rem;color:#888">Need: {_need_str}</div>' if _need else "")
+                        )
 
                     with col:
                         with st.container(border=True):
+                            # one HTML block with fixed-height sections → uniform cards
                             st.markdown(
+                                f'<span class="rc-marker"></span>'
                                 f'<div style="text-align:center;font-size:2.8rem;padding:16px 0 12px;'
                                 f'background:{top_bg};border-radius:10px;margin-bottom:12px">{emoji}</div>'
-                                f'<div style="font-family:\'Playfair Display\',serif;font-size:1rem;'
-                                f'font-weight:600;color:#2D3436;margin-bottom:4px">{name}</div>'
+                                f'<div class="rc-title">{name}{sub_badge}</div>'
                                 f'<div style="font-size:0.8rem;color:#8A9E96;margin-bottom:6px">⏱ {time_str}</div>'
-                                f'{badge_block}',
+                                f'{badge_block}'
+                                f'{sub_reason_html}'
+                                f'<div class="rc-ing-preview">{ing_preview}</div>'
+                                f'<div class="rc-pantry">{pantry_html}</div>',
                                 unsafe_allow_html=True,
                             )
-                            if ing_preview:
-                                st.caption(ing_preview)
+
                             with st.expander("View full recipe"):
                                 _full_recipe_content(
                                     overview_doc, instr_docs, tags,
                                     pinecone_ings, minutes, servings, flag_labels,
                                     llm_card=llm_card,
                                 )
+                            plan_ings = (llm_card or {}).get("ingredients") or pinecone_ings
+                            if st.button(
+                                "Plan groceries",
+                                key=f"plan_{rid}",
+                                use_container_width=True,
+                            ):
+                                st.session_state.grocery_recipe = {
+                                    "name":        name,
+                                    "ingredients": plan_ings,
+                                    "quantities":  (llm_card or {}).get("quantities", {}),
+                                    "steps":       (llm_card or {}).get("steps", []),
+                                    "description": (llm_card or {}).get("description", ""),
+                                }
+                                st.session_state.grocery_thread_id = str(uuid.uuid4())
+                                st.session_state.grocery_phase     = "planning"
+                                st.session_state.grocery_plan_data = None
+                                st.session_state.grocery_cart      = None
+                                st.rerun()
 
-        # LLM-selected recipe names (whitespace-normalised for reliable lookup)
-        llm_names = {" ".join(k.split()) for k in card_data.keys()}
+        # LLM-selected recipe names (whitespace-normalised for reliable lookup).
+        # The LLM copies the ### heading format which includes "(N min)" — strip
+        # that suffix so names match the plain Pinecone metadata field.
+        import re as _re
+        def _norm_name(s: str) -> str:
+            s = _re.sub(r'\s*\(\d+[\d.]*\s*min\)', '', s, flags=_re.IGNORECASE)
+            return " ".join(s.lower().split())
+
+        llm_names = {_norm_name(k) for k in card_data.keys()}
+
+        # a substituted recipe is renamed in the LLM response (e.g. "Palak Paneer"
+        # → "Palak Tofu"), so map each recipe_id to its renamed title to match it
+        # back to the right LLM card during selection.
+        renamed_norm_by_rid = {
+            e.get("recipe_id", ""): _norm_name(e.get("renamed_title", ""))
+            for e in substitutions if e.get("renamed_title")
+        }
 
         # recipe_ids that have an allergen conflict (these must only show in substitution section)
         unsafe_recipe_ids = {
@@ -1154,14 +1417,26 @@ if result:
             for pair in unsafe_pairs
         }
 
-        # all LLM-selected chunks, split by whether they have an allergen conflict
+        def _llm_picked(rid: str, chunks: list) -> bool:
+            """True if the LLM actually carded this recipe — by original name OR
+            by its substitution-renamed title."""
+            if any(_norm_name(d.metadata.get("name", "")) in llm_names for d in chunks):
+                return True
+            return renamed_norm_by_rid.get(rid, "\0") in llm_names
+
+        # only render recipes the LLM actually suggested (each has a real card).
+        # Cap at 5 to match the LLM's 3-5 suggestion limit.
+        _MAX_CARDS = 5
         if not is_fallback:
             selected_chunks = {
                 rid: chunks for rid, chunks in recipe_chunks.items()
-                if any(" ".join(d.metadata.get("name", "").lower().split()) in llm_names for d in chunks)
+                if _llm_picked(rid, chunks)
             }
+            if not selected_chunks:
+                # name matching failed entirely — show top retrieved as a last resort
+                selected_chunks = dict(list(recipe_chunks.items())[:_MAX_CARDS])
         else:
-            selected_chunks = recipe_chunks
+            selected_chunks = dict(list(recipe_chunks.items())[:_MAX_CARDS])
 
         safe_selected = {rid: c for rid, c in selected_chunks.items() if rid not in unsafe_recipe_ids}
         sub_selected  = {rid: c for rid, c in selected_chunks.items() if rid in unsafe_recipe_ids}
@@ -1204,3 +1479,227 @@ if result:
             _render_recipe_grid(list(safe_selected.items()), safe=not is_fallback)
 
 
+# ── Grocery Planning Panel ────────────────────────────────────────────────────
+
+_GROCERY_UNITS = ["each", "g", "kg", "ml", "l", "tsp", "tbsp", "cup",
+                  "clove", "can", "bunch", "pinch", "slice", "lb", "oz"]
+
+
+@st.dialog("Grocery Plan", width="large")
+def grocery_plan_dialog() -> None:
+    """
+    Modal that drives the whole grocery flow inside one pop-up:
+      planning → awaiting_approval → resuming → cart_ready.
+    Internal transitions use fragment-scoped reruns so the modal stays open;
+    Cancel/Close use app-scoped reruns to dismiss it.
+    """
+    phase = st.session_state.grocery_phase
+
+    # ── planning: run the Grocery Agent to produce the plan ──
+    if phase == "planning":
+        selected_recipe = st.session_state.grocery_recipe or {}
+        st.markdown(f"**Planning groceries for {selected_recipe.get('name', 'selected recipe')}…**")
+        with st.spinner("The Grocery Agent is checking your pantry, allergens and substitutions…"):
+            _members  = st.session_state.get("_active_members", [])
+            _profiles = st.session_state.get("_profiles", {})
+            _restrictions = restrictions_for(_members, _profiles)
+            try:
+                st.session_state.grocery_plan_data = run_grocery_agent(selected_recipe, _restrictions)
+                st.session_state.grocery_phase = "awaiting_approval"
+            except Exception as _e:
+                st.error(f"Grocery planning failed: {_e}")
+                st.session_state.grocery_phase = None
+        st.rerun()
+
+    # ── resuming: build the cart after the human approved (deterministic, gated here) ──
+    elif phase == "resuming":
+        st.markdown("**Creating your cart…**")
+        with st.spinner("Creating your cart draft…"):
+            try:
+                edits = st.session_state.get("grocery_qty_edits", {})
+                st.session_state.grocery_cart  = build_cart(st.session_state.grocery_plan_data or {}, edits)
+                st.session_state.grocery_phase = "cart_ready"
+            except Exception as _e:
+                st.error(f"Cart creation failed: {_e}")
+                st.session_state.grocery_phase = "awaiting_approval"
+        st.rerun()
+
+    # ── awaiting_approval / cart_ready: show the plan / cart ──
+    else:
+        _grocery_plan_contents()
+
+
+def _grocery_plan_contents() -> None:
+    """Render the grocery plan review UI (awaiting_approval and cart_ready phases)."""
+    plan  = st.session_state.grocery_plan_data or {}
+    cart  = st.session_state.grocery_cart or {}
+    phase = st.session_state.grocery_phase
+    recipe_name = plan.get("recipe_name", "Selected Recipe")
+
+    st.markdown(
+        f'<div class="section-label">Grocery Plan — {recipe_name}</div>',
+        unsafe_allow_html=True,
+    )
+
+    col_l, col_r = st.columns(2, gap="large")
+
+    with col_l:
+        # Already have
+        already_have = plan.get("already_have", [])
+        st.markdown("**Already in pantry**")
+        if already_have:
+            for item in already_have:
+                st.markdown(
+                    f'<span style="color:#2A6A2A">✓ {item}</span>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("Nothing matched in pantry.")
+
+        # Uncertain matches
+        uncertain = plan.get("uncertain", [])
+        if uncertain:
+            st.markdown("**Possible matches — please confirm**")
+            for u in uncertain:
+                st.markdown(
+                    f'<span style="color:#8A6500">? {u["recipe_ingredient"]}</span>'
+                    f'<span style="font-size:0.8rem;color:#888"> (pantry has: {u["pantry_item"]})</span>',
+                    unsafe_allow_html=True,
+                )
+
+    with col_r:
+        # Need to buy — editable quantities during approval
+        need_to_buy = plan.get("need_to_buy", [])
+        details     = plan.get("need_to_buy_details", []) or []
+        qty_by_ing  = {d.get("ingredient", ""): d for d in details}
+        st.markdown("**Need to buy**")
+
+        if details and phase == "awaiting_approval":
+            st.caption("Adjust amounts before approving:")
+            for d in details:
+                ing   = d.get("ingredient", "")
+                amt0  = float(d.get("amount", 1.0) or 1.0)
+                unit0 = d.get("unit", "each")
+                c_a, c_u, c_n = st.columns([1.1, 1.4, 3], vertical_alignment="center")
+                with c_a:
+                    st.number_input("amount", min_value=0.0, value=amt0, step=0.5,
+                                    key=f"qty_amt_{ing}", label_visibility="collapsed")
+                with c_u:
+                    st.selectbox("unit", _GROCERY_UNITS,
+                                 index=_GROCERY_UNITS.index(unit0) if unit0 in _GROCERY_UNITS else 0,
+                                 key=f"qty_unit_{ing}", label_visibility="collapsed")
+                with c_n:
+                    st.markdown(ing)
+        elif need_to_buy:
+            for item in need_to_buy:
+                d = qty_by_ing.get(item, {})
+                if d:
+                    st.markdown(f"- {_qty_label(d.get('amount', 1), d.get('unit', 'each'), item)}")
+                else:
+                    st.markdown(f"- {item}")
+        else:
+            st.caption("Nothing to buy — you have everything!")
+
+        # Substitutions
+        substitutions = plan.get("substitutions", [])
+        if substitutions:
+            st.markdown("**Substitutions**")
+            for sub in substitutions:
+                note = f" — {sub['notes']}" if sub.get("notes") else ""
+                st.markdown(
+                    f'<span style="font-size:0.88rem">'
+                    f'<span style="color:#C0504A">✗ {sub["original"]}</span>'
+                    f' → <span style="color:#2A6A2A">✓ {sub["substitute"]}</span>'
+                    f'<span style="color:#888;font-size:0.78rem"> ({sub["allergen"]} allergy{note})</span>'
+                    f'</span>',
+                    unsafe_allow_html=True,
+                )
+
+        # Blocked items
+        blocked = plan.get("blocked", [])
+        if blocked:
+            st.markdown("**Cannot include — no safe substitute found**")
+            for b in blocked:
+                st.markdown(
+                    f'<span style="color:#7A2A2A">✗ {b["ingredient"]}</span>'
+                    f'<span style="font-size:0.78rem;color:#888"> {b["reason"]}</span>',
+                    unsafe_allow_html=True,
+                )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if phase == "awaiting_approval":
+        if not need_to_buy and not plan.get("substitutions"):
+            st.info("You already have everything in your pantry!")
+
+        col_approve, col_edit, col_cancel = st.columns([2, 2, 2])
+        with col_approve:
+            if st.button("Approve cart draft", type="primary", use_container_width=True):
+                # collect edited quantities from the widgets, keyed by ingredient name
+                edits = {}
+                for d in details:
+                    ing = d.get("ingredient", "")
+                    edits[ing] = {
+                        "amount": st.session_state.get(f"qty_amt_{ing}", d.get("amount", 1.0)),
+                        "unit":   st.session_state.get(f"qty_unit_{ing}", d.get("unit", "each")),
+                    }
+                st.session_state.grocery_qty_edits = edits
+                st.session_state.grocery_phase = "resuming"
+                st.rerun()
+        with col_edit:
+            if st.button("Edit pantry", use_container_width=True):
+                st.info("Update your pantry in the sidebar, then click 'Plan groceries' again.")
+        with col_cancel:
+            if st.button("Cancel", use_container_width=True):
+                st.session_state.grocery_phase = None
+                st.rerun()
+
+    elif phase == "cart_ready":
+        if cart:
+            insta_url = cart.get("instacart_url")
+            if insta_url:
+                st.success("Your shopping list is ready on Instacart! 🛒")
+                st.link_button(
+                    "🛒  Add everything to my Instacart cart",
+                    insta_url,
+                    use_container_width=True,
+                    type="primary",
+                )
+                st.caption("Opens Instacart with every item pre-loaded. No order is placed until you check out.")
+            else:
+                st.success("Cart draft created! (No real order placed.)")
+                if cart.get("instacart_error"):
+                    st.caption(f"Instacart link unavailable — {cart['instacart_error']}")
+
+            st.markdown("**Your grocery cart draft**")
+            items_by_cat: dict[str, list] = {}
+            for it in cart.get("items", []):
+                label = _qty_label(it.get("amount", 1), it.get("unit", "each"), it["name"])
+                items_by_cat.setdefault(it["category"], []).append(label)
+            for cat, names in sorted(items_by_cat.items()):
+                st.markdown(f"*{cat.title()}*")
+                for n in names:
+                    st.markdown(f"  - {n}")
+            st.caption(f"Created at {cart.get('created_at', '')[:19].replace('T', ' ')} UTC")
+        else:
+            err = st.session_state.grocery_plan_data.get("error", "") if st.session_state.grocery_plan_data else ""
+            if err:
+                st.warning(err)
+
+        if st.button("Close", use_container_width=False):
+            st.session_state.grocery_phase = None
+            st.session_state.grocery_plan_data = None
+            st.session_state.grocery_cart = None
+            st.rerun()
+
+
+# Stash the inputs the grocery modal needs so it can read them on fragment reruns
+st.session_state._active_members = active_members
+st.session_state._profiles       = profiles
+
+# The grocery plan lives in a modal pop-up that drives the full flow
+# (planning → approval → cart). Only one dialog may open per run, so skip it if
+# the pantry dialog was opened this run.
+_pantry_opening = st.session_state.pop("_pantry_opening", False)
+if not _pantry_opening and st.session_state.grocery_phase in ("planning", "awaiting_approval", "resuming", "cart_ready"):
+    grocery_plan_dialog()

@@ -20,6 +20,21 @@ PROFILES_DB       = DATA_DIR / "profiles.db"
 USDA_FDC_API_KEY = os.getenv("USDA_FDC_API_KEY")
 
 OPENAI_API_KEY         = os.getenv("OPENAI_API_KEY")
+NEBIUS_API_KEY         = os.getenv("NEBIUS_API_KEY")
+NEBIUS_BASE_URL        = os.getenv("NEBIUS_BASE_URL", "https://api.studio.nebius.com/v1/")
+NEBIUS_MODEL           = os.getenv("NEBIUS_MODEL", "meta-llama/Meta-Llama-3.1-70B-Instruct")
+# Cart backend: "mock" (default, no external account) or "instacart" (real MCP)
+CART_PROVIDER          = os.getenv("CART_PROVIDER", "mock")
+# Substitution agent — stronger model + a little creativity for context-aware picks.
+# The allergen safety check stays on a cheap, deterministic model (temp 0).
+SUBSTITUTION_AGENT_MODEL       = os.getenv("SUBSTITUTION_AGENT_MODEL", "gpt-4o")
+SUBSTITUTION_AGENT_TEMPERATURE = float(os.getenv("SUBSTITUTION_AGENT_TEMPERATURE", "0.4"))
+SUBSTITUTION_SAFETY_MODEL      = os.getenv("SUBSTITUTION_SAFETY_MODEL", "gpt-4o-mini")
+# Grocery + Meal orchestrator agents (light reasoning / routing → cheap model)
+GROCERY_AGENT_MODEL            = os.getenv("GROCERY_AGENT_MODEL", "gpt-4o-mini")
+ORCHESTRATOR_MODEL             = os.getenv("ORCHESTRATOR_MODEL", "gpt-4o-mini")
+INSTACART_API_KEY      = os.getenv("INSTACART_API_KEY")
+INSTACART_MCP_URL      = os.getenv("INSTACART_MCP_URL", "https://mcp.dev.instacart.tools/mcp")
 PINECONE_API_KEY       = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME    = os.getenv("PINECONE_INDEX_NAME", "allochef-recipes")
 PINECONE_SUBS_INDEX    = os.getenv("PINECONE_SUBS_INDEX_NAME", "allochef-substitutions")
